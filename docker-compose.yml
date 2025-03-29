@@ -1,0 +1,48 @@
+version: '3'
+networks:
+  tapchain:
+    driver: bridge
+    
+services: 
+
+    # PHPRedisAdmin ################################################
+    redisadmin:
+      image: erikdubbelboer/phpredisadmin:latest
+      container_name: redisadmin
+      stdin_open: true
+      tty: true
+      restart: always
+      environment:
+        - ADMIN_USER=admin
+        - ADMIN_PASS=123456
+        - REDIS_1_HOST=redis
+        - REDIS_1_PORT=6379
+        - REDIS_1_AUTH=tapai123456
+      networks:
+        - tapchain
+      ports:
+        - "16379:80"
+        
+    redis:
+      image: redis:latest
+      container_name: redis
+      stdin_open: true
+      tty: true
+      command: redis-server --requirepass tapai123456
+      restart: always
+      networks:
+        - tapchain
+      ports:
+        - "7001:6379"
+        
+    # rabbitmq:
+    #   image: rabbitmq:3-management
+    #   container_name: rabbitmq
+    #   stdin_open: true
+    #   tty: true
+    #   restart: always
+    #   networks:
+    #     - tapchain
+    #   ports:
+    #     - "5672:5672"
+    #     - "15672:15672"
