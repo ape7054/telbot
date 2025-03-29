@@ -1,0 +1,9 @@
+.DS_Store
+node_modules
+/dist
+.env
+txLog.log
+/tokens
+/executable
+tokens.json
+sync_config.jsonc
