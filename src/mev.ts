@@ -323,8 +323,11 @@ function processInstructions(instructions: any[], accounts: string[], parser: Sw
             console.log(`调用 Invariant 解析器，索引: ${index}`);
             return Promise.resolve(parser.Invariant(item, index));
         },
-        // StabbleStableSwap暂时禁用
-        // 15: (item, index) => Promise.resolve(parser.StabbleStableSwap(item, index)),
+        // StabbleStableSwap DEX解析器
+        15: (item, index) => {
+            console.log(`调用 StabbleStableSwap 解析器，索引: ${index}`);
+            return Promise.resolve(parser.StabbleStableSwap(item, index));
+        },
         // Raydium DEX解析器
         16: (item, index) => {
             console.log(`调用 Raydium 解析器，索引: ${index}`);

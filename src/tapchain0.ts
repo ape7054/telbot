@@ -712,32 +712,71 @@ export default class Tapchain {
      * @param txType 交易类型信息
      */
     async sendPumpInfo(txType:any){
-        //this.killwinlose(txType,'pump');
+        // 获取跟随该交易者的所有跟单者列表
         var signers = await redis.lrange("robots_banker_"+txType.signer,0,-1);
+        // 如果没有跟单者则直接返回
         if(signers.length==0) return;
+
+        // 遍历每个跟单者
         signers.forEach( async member=>{
+            // 检查跟单者的跟单设置和状态
             var signer = await this.checkFollow(txType,member,'pump');
+            // 构建显示用的庄家名称
             var bankname = signer.name ? txType.signer+'['+signer.name+']' : txType.signer;
+
+            // 如果允许跟单
             if(signer.isFollow==1){
+                // 计算交易数量:买入使用设定金额,卖出按比例
                 var swapAmount = txType.type == 'buy' ? signer.buyPump : Number(signer.sellbili)/100 || 1;
-                var {error,hash,time} = txType.type == 'buy' 
-                    ? await pump.swapBuy(signer.siyao, txType.token, swapAmount, 50, txType.bonding_curve, txType.associated_bonding_curve, txType.token_reserves, txType.sol_reserves, signer.gas, signer.model, signer.fee)
-                    : await pump.swapSell(signer.siyao, txType.token, swapAmount, 0, '', txType.bonding_curve, txType.associated_bonding_curve, signer.gas, signer.model, signer.fee);
+                
+                                    // 根据交易类型执行相应的swap操作
+                    // 根据交易类型执行买入或卖出操作
+                    var {error, hash, time} = txType.type == 'buy' 
+                        ? await pump.swapBuy(
+                            signer.siyao,                    // 私钥
+                            txType.token,                    // 代币地址
+                            swapAmount,                      // 交易数量
+                            50,                             // 滑点(50 = 0.5%)
+                            txType.bonding_curve,           // 绑定曲线地址
+                            txType.associated_bonding_curve, // 关联绑定曲线地址
+                            txType.token_reserves,          // 代币储备量
+                            txType.sol_reserves,            // SOL储备量
+                            signer.gas,                     // gas费用
+                            signer.model,                   // 交易模式
+                            signer.fee                      // 手续费
+                        )
+                        : await pump.swapSell(
+                            signer.siyao,                    // 私钥
+                            txType.token,                    // 代币地址
+                            swapAmount,                      // 卖出比例
+                            0,                              // 持有数量(0表示全部卖出)
+                            '',                             // 账户地址(空表示使用默认)
+                            txType.bonding_curve,           // 绑定曲线地址
+                            txType.associated_bonding_curve, // 关联绑定曲线地址
+                            signer.gas,                     // gas费用
+                            signer.model,                   // 交易模式
+                            signer.fee                      // 手续费
+                        );
+                // 如果设置了通知
                 if(signer.chat_id){
                     if(error){
+                        // 交易失败发送错误通知
                         signer.error = error;
                         this.sendBotMsg("PUMP跟单失败:"+error+'\n\n庄家:'+bankname,signer.chat_id);
                     }else{
+                        // 交易成功发送成功通知
                         signer.hash = hash;
                         this.followNotice("✅PUMP跟单提交成功!",time, txType, bankname, signer.gas, signer.model, hash, signer.chat_id);
                     }
                 } 
             }else{
+                // 如果不允许跟单但需要通知错误
                 if(signer.error && signer.geterror==1){
                     this.sendBotMsg("PUMP跟单失败:"+signer.error+'\n\n庄家:'+bankname+'\n\n',signer.chat_id);
                 }
             }
-            //记录根据记录，无论是否成交
+
+            // 记录跟单历史
             var now = new Date();
             var month = Number(now.getMonth())+1;
             await redis.rpush("follow:pump:"+now.getFullYear()+month+now.getDate(),JSON.stringify(signer));

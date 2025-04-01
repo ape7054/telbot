@@ -23,7 +23,7 @@ async function loadData(){
     // 创建程序公钥对象
     const PUMP_PROGRAM    = new PublicKey(config.pump_program); // Pump程序的公钥
     const RAYDIUM_PROGRAM = new PublicKey(config.raydium_program); // Raydium程序的公钥
-    console.log(config.grpc_url); // 打印GRPC服务器URL
+    console.log("GRPC服务器URL:", config.grpc_url); // 打印GRPC服务器URL
     
     // 监听交易数据流
     stream.on("data", (data: { transaction: { transaction: any; slot: any; }; filters: string[]; }) => {
@@ -31,7 +31,7 @@ async function loadData(){
         if(data?.transaction && data.filters[0] == 'pumpFun'){
             var value = data?.transaction.transaction; // 获取交易数据
             var slot = data?.transaction.slot; // 获取交易所在的区块槽位
-            console.log(slot); // 打印槽位号
+          
             var signature = base58.encode(Buffer.from(value.signature,'base64')) // 将交易签名从base64转为base58格式
             
             // 创建交易信息对象，用于存储解析后的数据
@@ -56,20 +56,32 @@ async function loadData(){
             var accountKeys = value.transaction.message.accountKeys; // 主要账户
             var loadedWritableAddresses = value.meta.loadedWritableAddresses; // 可写账户
             var loadedReadonlyAddresses = value.meta.loadedReadonlyAddresses; // 只读账户
-            
             // 将所有账户地址转换为base58格式并添加到accounts数组
+            let accountCount = 0; // 初始化账户计数器
             accountKeys.forEach((ele: string) => {
-                accounts.push(base58.encode(Buffer.from(ele,'base64')));
-            })
-            loadedWritableAddresses.forEach((ele: string) => {
-                accounts.push(base58.encode(Buffer.from(ele,'base64')));
-            })
-            loadedReadonlyAddresses.forEach((ele: string) => {
-                accounts.push(base58.encode(Buffer.from(ele,'base64')));
+                const base58Address = base58.encode(Buffer.from(ele,'base64'));
+                accounts.push(base58Address);
+                accountCount++; // 增加计数
+                console.log(`账户地址 ${accountCount}:`, base58Address); // 显示带编号的账户地址
             })
             
+            loadedWritableAddresses.forEach((ele: string) => {
+                const base58Address = base58.encode(Buffer.from(ele,'base64'));
+                accounts.push(base58Address);
+                console.log('可写账户地址:', base58Address); // 调试输出可写账户地址
+            })
+            
+            loadedReadonlyAddresses.forEach((ele: string) => {
+                const base58Address = base58.encode(Buffer.from(ele,'base64'));
+                accounts.push(base58Address);
+                console.log('只读账户地址:', base58Address); // 调试输出只读账户地址
+                
+            })
+            
+            console.log('所有账户地址列表:', accounts); // 调试输出完整的账户地址列表
             // 查找Pump程序在账户列表中的索引
             var pumpProgramIndex=-1;
+        
             accounts.forEach((val,i) => {
                 if(i == 0){
                     hashInfo.signer = val; // 第一个账户通常是交易签名者
@@ -87,7 +99,9 @@ async function loadData(){
             var instructions = value.transaction.message.instructions;
             instructions.forEach((element: { programIdIndex: number; accounts: { toJSON: () => { (): any; new(): any; data: any; }; }; }) => {
                 // 查找Pump程序的指令
+                
                 if(element.programIdIndex == pumpProgramIndex){
+                    // 从element.accounts中获取账户数据并转换为JSON格式
                     var accountsData = element.accounts.toJSON().data;
                     // 长度为12的指令通常是交易指令
                     if(accountsData.length==12){
@@ -208,7 +222,18 @@ async function loadData(){
                     // 根据代币数量变化判断交易类型(买入/卖出)
                     hashInfo.type = Number(beforeToken)>Number(pollToken)?'buy':'sell';
                     // 发送交易信息
+// 输出交易链接到控制台
+                    console.log(`交易链接：https://solscan.io/tx/${signature}`);
+
+                    
+                    console.log('Debug rayInfo:', JSON.stringify(hashInfo, null, 2));
+
+
                     tapchain.sendPumpInfo(hashInfo);
+
+
+                    process.exit(0);
+
                     //tapchain.analyseSignerData(hashInfo);
                 }
             }
@@ -227,21 +252,21 @@ async function loadData(){
             // 将交易签名从base64转为base58格式
             var signature = base58.encode(Buffer.from(value.signature,'base64'));
             
-            // 创建Raydium交易信息对象
+            // 创建Raydium交易信息对象，用于存储交易相关数据
             var rayInfo = {
-                signer:'',
-                slot:Number(slot),
-                signature,
-                token:'',
-                ammid:"",
-                type:'',
-                poolsize:0,
-                sol:0,
-                price:'',
-                number:0,
-                token_reserves:0,
-                sol_reserves:0,
-                holdnum:0
+                signer:'',      // 交易签名者地址
+                slot:Number(slot), // 交易所在区块槽位
+                signature,      // 交易签名
+                token:'',       // 代币地址
+                ammid:"",       // 自动做市商ID
+                type:'',        // 交易类型(buy/sell)
+                poolsize:0,     // 流动性池大小
+                sol:0,          // SOL数量
+                price:'',       // 交易价格
+                number:0,       // 交易代币数量
+                token_reserves:0, // 代币储备量
+                sol_reserves:0,   // SOL储备量
+                holdnum:0       // 持有数量
             };
             
             // 解析交易中的账户信息
@@ -264,30 +289,36 @@ async function loadData(){
                 accounts.push(base58.encode(Buffer.from(ele,'base64')));
             })
             
-            // 查找各种程序在账户列表中的索引
+            // 遍历账户列表查找各种程序的索引位置
             var rayProgramIndex = -1, tokenProgramIndex=-1, lifinityProgramIndex=-1;
             accounts.forEach((val,i) => {
+                // 第一个账户为交易签名者
                 if(i == 0){
                     rayInfo.signer = val;
                 }
+                // 查找Raydium程序索引
                 if(val == RAYDIUM_PROGRAM.toString()){
                     rayProgramIndex = i;
                 }
+                // 检查是否为Raydium权限账户
                 if(val == config.raydium_authority){
                 }
+                // 查找Token程序索引
                 if(val == 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'){
                     tokenProgramIndex = i;
                 }
+                // 检查是否为Jupiter程序账户
                 if(val == 'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4'){
                 }
+                // 查找Lifinity程序索引
                 if(val == '2wT8Yq49kHgDzXuPxZSaeLaH1qbmGXtEyPy64bL7aD3c'){
                     lifinityProgramIndex = i;
                 }
+                // 如果遇到特定账户则提前返回
                 if(val == '5YET3YapxD6to6rqPqTWB3R9pSbURy6yduuUtoZkzoPX'){
                     return rayInfo;
                 }
             });
-            
             // 初始化变量
             var iscreate = 0, atoken = '', btoken='', hasRaydium=0;
             var ammids:string[] = [];
@@ -296,7 +327,8 @@ async function loadData(){
             var instructions = value.transaction.message.instructions;
             instructions.forEach((element: { programIdIndex: number; accounts: { toJSON: () => { (): any; new(): any; data: any; }; }; }) => {
                 if(element.programIdIndex == rayProgramIndex){
-                    var accountsData = element.accounts.toJSON().data;
+                var accountsData = element.accounts.toJSON().data;
+              
                     if(accountsData.length==21){
                         accountsData.forEach((ele: number,i: number)=>{
                             if(i==4) rayInfo.ammid = accounts[ele];
@@ -403,11 +435,13 @@ async function loadData(){
                     
                     if(rayInfo.token_reserves && rayInfo.sol_reserves){
                         rayInfo.price = (new Decimal(rayInfo.sol_reserves)).div(10**(9-decimals)).div(new Decimal(rayInfo.token_reserves)).toFixed(15);
-                        console.log('Debug rayInfo:', JSON.stringify(rayInfo, null, 2));
+                        // 输出交易链接到控制台
+                        // console.log(`交易连接：https://solscan.io/tx/${signature}`)
                           
                         tapchain.sendRayInfo(rayInfo);
 
-                        process.exit(0);
+                        // process.exit(0);
+                        
                     }
                     
                 }

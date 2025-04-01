@@ -173,9 +173,28 @@ export class SwapParser{
 
         // 记录特定类型的交易日志
         if(ammone.id==2) {
+            // 如果 amm 字段为空，设置为对应的程序ID或默认值
+            if (!ammone.amm || ammone.amm === "") {
+                // 根据 id 设置对应的 AMM 名称
+                switch(ammone.id) {
+                    case 2:
+                        ammone.amm = "Jupiter";
+                        ammone.name = "Jupiter Swap";
+                        break;
+                    // 可以添加其他类型的 AMM
+                    default:
+                        ammone.amm = "Unknown";
+                        break;
+                }
+            }
+            
+            // 构建交易日志字符串
             var txLog = `JP: ${CONFIG.SOLSCAN_URL}${this.signature} at RouterType: ${ammone.id}\n`;
+            // 添加代币交换信息
             txLog += ammone.input + " swap " + ammone.output + "\n";
+            // 添加交换数量信息
             txLog += ammone.in + " swap " + ammone.out + "\n\n";
+            // 将日志追加写入文件
             fs.appendFileSync('./txLog.log', txLog);
             
             // 将交易数据存入Redis
@@ -199,9 +218,6 @@ export class SwapParser{
                 // 添加到交易列表(用于快速查询)
                 await redisClient.lPush('recent_transactions', key);
                 await redisClient.lTrim('recent_transactions', 0, 999); // 只保留最近1000条
-                
-
-
             } catch (error) {
                 console.error('Redis存储错误:', error);
             }
@@ -213,6 +229,16 @@ export class SwapParser{
      * 获取SPL代币交易信息
      * @param mainindex 主指令索引
      * @returns SPL代币交易数组
+     */
+    /**
+     * 获取SPL代币交易信息
+     * @param mainindex - 主指令索引
+     * @returns SPL代币交易数组
+     * 
+     * 该方法用于从内部指令中提取SPL代币的交易信息:
+     * 1. 查找指定索引的内部指令
+     * 2. 过滤出Token程序相关的指令
+     * 3. 格式化并收集代币交易数据
      */
     getSpltokens(mainindex:number){
         var spltokens:any[] = [];
@@ -235,20 +261,34 @@ export class SwapParser{
     // 2. 获取SPL代币交易信息
     // 3. 解析AMM交易数据
 
-    // SolFi交易解析
+    /**
+     * SolFi交易解析方法
+     * @param item - 交易指令项
+     * @param mainindex - 主指令索引
+     * @returns 解析是否成功
+     * 
+     * 该方法用于解析SolFi DEX的交易:
+     * 1. 验证账户数据的有效性
+     * 2. 获取SPL代币交易信息
+     * 3. 解析并返回AMM交易数据
+     */
     SolFi(item:any,mainindex:number){
+        // 验证账户数据长度和程序索引
         if( item.accounts.toJSON().data.length < 17 ) {
             if(item.accounts.toJSON().data[1] != item.programIdIndex){
                 return false;
             }
         }
     
+        // 获取SPL代币交易信息
         var spltokens = this.getSpltokens(mainindex);
     
+        // 验证代币交易数量
         if (spltokens.length !=2 ) {
             return false;
         }
     
+        // 创建AMM路由信息并解析交易数据
         var ammone = emptyRouterInfo(2);
         const result = this.getAmmData(ammone,spltokens[0],spltokens[1]);
         return result;
@@ -304,6 +344,21 @@ export class SwapParser{
 
     // StabbleWeightedSwap交易解析
     StabbleWeightedSwap(item:any,mainindex:number){
+        if(item.accounts.toJSON().data[0] != this.tokenProgramIndex){
+            return false;
+        }
+
+        var spltokens = this.getSpltokens(mainindex);
+        if (spltokens.length !=2 ) {
+            return false;
+        }
+
+        var ammone = emptyRouterInfo(2);
+        return this.getAmmData(ammone,spltokens[0],spltokens[1]);
+    }
+
+    // StabbleStableSwap交易解析
+    StabbleStableSwap(item:any,mainindex:number){
         if(item.accounts.toJSON().data[0] != this.tokenProgramIndex){
             return false;
         }

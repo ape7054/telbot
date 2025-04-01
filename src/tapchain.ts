@@ -13,6 +13,8 @@ import { createClient } from 'redis';
 // 需要先安装依赖: npm install node-telegram-bot-api @types/node-telegram-bot-api
 // 需要先安装依赖: npm install node-telegram-bot-api
 import TelegramBot from 'node-telegram-bot-api';
+// 添加代理代理依赖
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
@@ -30,6 +32,7 @@ const redis = createClient({
         }
     }
 });
+
 // Redis连接错误处理
 redis.on('error', err => console.log('Redis Client Error', err));
 // 确保Redis连接
@@ -46,23 +49,82 @@ export default class Tapchain {
 
     constructor() {
         const token = process.env.TELEGRAM_BOT_TOKEN || '';
-        this.bot = new TelegramBot(token, { polling: false });
-        console.log('TapChain模块已初始化');
+        if (!token) {
+            console.error('TELEGRAM_BOT_TOKEN 未设置');
+        }
+        
+        // 添加代理配置
+        const proxyUrl = 'http://127.0.0.1:7890';
+        const agent = new HttpsProxyAgent(proxyUrl);
+        
+        // 使用代理创建 TelegramBot 实例
+        this.bot = new TelegramBot(token, { 
+            polling: false,
+            request: {
+                url: 'https://api.telegram.org',  // 添加 Telegram API 的基础 URL
+                agent: agent
+            }
+        });
+        
+        console.log('TapChain模块已初始化（使用代理）');
     }
+    
     /**
      * 发送Telegram机器人消息
      * @param message 要发送的消息内容
      * @param chatId 接收消息的聊天ID
+     * @param maxAttempts 最大重试次数
+     * @param timeoutMs 超时时间(毫秒)
      */
-    async sendBotMsg(message: string, chatId: number | string) {
-        try {
-            await this.bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
-            console.log(`消息已发送到聊天ID: ${chatId}`);
-        } catch (error) {
-            console.error('发送Telegram消息失败:', error);
+    async sendBotMsg(message: string, chatId: number | string, maxAttempts: number = 3, timeoutMs: number = 30000) {
+        // 使用 Promise 包装发送消息，设置超时
+        const sendWithTimeout = async () => {
+            return new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    reject(new Error('发送消息超时'));
+                }, timeoutMs);
+                
+                this.bot.sendMessage(chatId, message, { parse_mode: 'HTML' })
+                    .then(result => {
+                        clearTimeout(timeout);
+                        resolve(result);
+                    })
+                    .catch(error => {
+                        clearTimeout(timeout);
+                        console.error('API 错误详情:', error);
+                        reject(error);
+                    });
+            });
+        };
+        
+        // 尝试发送消息，最多重试指定次数
+        let attempt = 1;
+        
+        while (attempt <= maxAttempts) {
+            try {
+                console.log(`尝试发送消息 (${attempt}/${maxAttempts})...`);
+                await sendWithTimeout();
+                console.log(`消息已发送到聊天ID: ${chatId}`);
+                return true;
+            } catch (error) {
+                console.error(`尝试 ${attempt} 失败:`, error);
+                
+                if (attempt === maxAttempts) {
+                    console.error('发送Telegram消息失败:', error);
+                    return false;
+                }
+                
+                // 等待时间递增
+                const waitTime = attempt * 2000;
+                console.log(`等待 ${waitTime}ms 后重试...`);
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+                attempt++;
+            }
         }
+        
+        return false;
     }
-    
+
     /**
      * 处理交易失败的情况并发送通知
      * @param hash 失败交易的哈希值
@@ -94,6 +156,7 @@ export default class Tapchain {
             console.error(`处理交易失败通知时出错 (${hash}):`, error);
         }
     }
+    
     /**
      * 处理交易成功的情况并发送通知
      * @param hash 成功交易的哈希值
@@ -125,6 +188,7 @@ export default class Tapchain {
             console.error(`处理交易成功通知时出错 (${hash}):`, error);
         }
     }
+
     /**
      * 保存交易通知信息到Redis
      * @param hash 交易哈希
@@ -315,11 +379,6 @@ export default class Tapchain {
 
 
     
-
-
-
-
-
     /**
      * 处理程序退出
      */
