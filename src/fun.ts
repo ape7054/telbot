@@ -6,12 +6,30 @@ import { Redis } from 'ioredis';
 import { config, request } from './init';
 import Tapchain from './tapchain0';
 
-const solana = new Connection(config.RPC_URL, {wsEndpoint: config.WSS_URL,commitment:'confirmed',disableRetryOnRateLimit:true});
+// 初始化 Solana 连接
+const solana = new Connection(
+  config.RPC_URL, 
+  {
+    wsEndpoint: config.WSS_URL,
+    commitment: 'confirmed',
+    disableRetryOnRateLimit: true
+  }
+);
+
+// 导入第三方依赖
 const axios = require('axios');
 const Decimal = require('decimal.js');
-const tapchain = new Tapchain();
-const redis = new Redis({host:config.rshost,port:6379,password:config.rspwd,db: config.rsdb});
 
+// 初始化 Tapchain 实例
+const tapchain = new Tapchain();
+
+// 初始化 Redis 连接
+const redis = new Redis({
+  host: config.rshost,
+  port: 6379,
+  password: config.rspwd,
+  db: config.rsdb
+});
 export default class BotFun {
     async checkHash(hash:string,ctx:any){
       var value:VersionedTransactionResponse;

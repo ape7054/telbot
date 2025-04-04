@@ -388,7 +388,9 @@ export default class Tapchain {
         // 获取该交易签名者的所有跟单者列表
         var signers = await redis.lrange("robots_banker_"+txType.signer,0,-1);
         if(signers.length==0) return '';
-
+        // 调试输出跟单者列表
+        // console.log('当前跟单者列表:', signers);
+        // process.exit(); 
         // 遍历每个跟单者
         signers.forEach( async member=>{
             // 检查跟单者的跟单设置和状态
@@ -785,42 +787,58 @@ export default class Tapchain {
 
     /**
      * 创建新的Raydium交易池
-     * @param value 交易值信息
-     * @param txType 交易类型信息
-     * @param atoken 代币A地址
-     * @param btoken 代币B地址
+     * @param value 交易值信息,包含代币余额等数据
+     * @param txType 交易类型信息,包含交易相关参数
+     * @param atoken 代币A地址(可能是SOL或其他代币)
+     * @param btoken 代币B地址(可能是SOL或其他代币) 
      * @param accounts 相关账户列表
      */
     async newRayPool(value:any,txType:any,atoken:string,btoken:string,accounts:string[]){
+        // 确定交易代币地址 - 如果其中一个是WSOL,则另一个为交易代币
         if(atoken == config.wsol) txType.token = btoken;
         if(btoken == config.wsol) txType.token = atoken;
         txType.type = 'create';
+        
+        // 遍历交易后的代币余额信息
         var postTokens = value.meta.postTokenBalances;
         postTokens.forEach((val:any) => {
+            // 检查是否是Raydium权限账户
             if(val.owner == config.raydium_authority){
                 if(val.mint == txType.token){
+                    // 设置代币储备量和精度
                     txType.token_reserves = val.uiTokenAmount.amount;
                     txType.decimals = val.uiTokenAmount.decimals;
+                    // 如果是pump签名者,记录代币池地址
                     if(txType.signer == config.pump_signer){
                         txType.token_pool = accounts[val.accountIndex]
                     }
                 }else{
+                    // 如果是pump签名者,记录SOL池地址
                     if(txType.signer == config.pump_signer){
                         txType.sol_pool = accounts[val.accountIndex]
                     }
+                    // 设置池子大小和SOL储备量
                     txType.poolsize = val.uiTokenAmount.uiAmount;
                     txType.sol_reserves = val.uiTokenAmount.amount;
                 }
             }
         })
+    
+        // 保存交易池信息到Redis
         await redis.set("ammidByToken:"+txType.token,txType.ammid);
         await redis.set("raydium:"+txType.token,JSON.stringify(txType));
+    
+        // 如果是pump签名者创建的池子
         if(txType.signer == config.pump_signer){
+            // 获取并删除pump池信息
             var pumpJson = await redis.get("pump:"+txType.token);
             var pump = JSON.parse(pumpJson);
             await redis.del("pump:"+txType.token);
+    
             if(pump){
+                // 获取发币者地址
                 var minter = pump.signer || pump.traderPublicKey;
+                // 更新或创建发币者信息
                 var ifcreater = await redis.get("pool:creater:"+minter);
                 if(ifcreater){
                     var creater = JSON.parse(ifcreater);
@@ -833,8 +851,10 @@ export default class Tapchain {
                         tokens:1
                     }));
                 }
+                // 添加发币者到列表
                 await redis.rpush("pool:minter",minter);
             }
+            // 记录pump转raydium的池子信息
             await redis.rpush("pool:pump:raydium",JSON.stringify(txType));
             //console.log('pump转raydium',txType);
         }else{

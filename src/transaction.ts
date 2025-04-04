@@ -28,6 +28,8 @@ export class SwapParser{
     private signature = "";              // 交易签名
     private innerInstructions: any[] = []; // 内部指令数组
     private postTokenBalances: any[] = []; // 交易后的代币余额数组
+    private slot: number = 0;            // 交易所在的区块槽位
+    private accounts: string[] = []; // 新增 accounts 属性
 
     /**
      * 构造函数 - 初始化解析器所需的参数
@@ -36,13 +38,16 @@ export class SwapParser{
      * @param postTokenBalances 交易后的代币余额数组
      * @param tokenProgramIndex Token程序索引
      * @param token2022ProgramIndex Token2022程序索引
+     * @param slot 交易所在的区块槽位
      */
-    constructor(signature:string,innerInstructions:any[],postTokenBalances:any[],tokenProgramIndex:number,token2022ProgramIndex:number) {
+    constructor(signature:string, innerInstructions:any[], postTokenBalances:any[], tokenProgramIndex:number, token2022ProgramIndex:number, slot:number = 0, accounts:string[] = []) {
         this.tokenProgramIndex = tokenProgramIndex;
         this.innerInstructions = innerInstructions;
         this.postTokenBalances = postTokenBalances;
         this.token2022ProgramIndex = token2022ProgramIndex;
         this.signature = signature;
+        this.slot = slot;
+        this.accounts = accounts; // 初始化 accounts
     }
 
     /**
@@ -127,9 +132,9 @@ export class SwapParser{
                 if(insitem.programIdIndex == jupiterProgramIndex){
                     if(amminfo.id>0 && spltokens.length>0){
                         if(amminfo.id==14 || amminfo.id==9){
-                            this.getAmmData(amminfo,spltokens[0],spltokens[1]);
+                            this.getAmmData(amminfo, spltokens[0], spltokens[1]);
                         }else{
-                            this.getAmmData(amminfo,spltokens[0],spltokens[1]);
+                            this.getAmmData(amminfo, spltokens[0], spltokens[1]);
                         }
                     }
                     amminfo = emptyRouterInfo();
@@ -143,93 +148,122 @@ export class SwapParser{
      * @param ammone AMM路由信息
      * @param open 输入代币信息
      * @param close 输出代币信息
+     * @param accounts 账户地址数组 - 新增参数
      * @returns 是否成功获取数据
      */
-    async getAmmData(ammone:RouterInfo,open:any,close:any): Promise<boolean> {
-        if(open.destination == "" ||  close.source == "" || open.destination ==  close.source) return false;
-        // 设置交易池和金额信息
-        ammone.poola = open.destination;
-        ammone.poolb = close.source;
-        ammone.in = open.amount;
-        ammone.out = close.amount;
-        if(open.mint == undefined){
-            ammone.input = open.mint;
-            ammone.output = close.mint;
-        }
-        // 更新代币余额信息
-        this.postTokenBalances.forEach((val:any)=>{
-            if(val.accountIndex == ammone.poola){
-                ammone.input = val.mint;
-                ammone.inpool = val.uiTokenAmount.uiAmountString;
-                ammone.in = new Decimal(ammone.in).div(10**val.uiTokenAmount.decimals).toString();
+    /**
+         * 获取AMM交易数据
+         */
+        async getAmmData(ammone:RouterInfo, open:any, close:any): Promise<RouterInfo | boolean> {
+            if(open.destination == "" ||  close.source == "" || open.destination ==  close.source) return false;
+            
+            // 设置交易池和金额信息
+            ammone.signature = this.signature;
+            
+            // 设置签名者地址
+            ammone.signer = this.accounts[open.authority];
+            
+            // 安全设置池地址 - 确保初始化
+            ammone.poola = open.destination;
+            ammone.poolb = close.source;
+            
+            
+           
+            if (this.slot) {
+                ammone.slot = this.slot;
             }
-            if(val.accountIndex == ammone.poolb){
-                ammone.output = val.mint;
-                ammone.outpool = val.uiTokenAmount.uiAmountString;
-                ammone.out = new Decimal(ammone.out).div(10**val.uiTokenAmount.decimals).toString();
+            // 设置交易类型为对应的Jupiter交换类型
+            ammone.type = JupSwaps[ammone.id];
+            
+            // 设置输入和输出金额
+            ammone.in = open.amount;
+            ammone.out = close.amount;
+            
+            // 如果输入代币的mint未定义,则设置输入输出代币地址
+            if(open.mint == undefined){
+                ammone.input = open.mint;
+                ammone.output = close.mint;
             }
-        })
-        if(ammone.input == "" || ammone.output == "" || ammone.input == ammone.output) return false;
+            
+            // 更新代币余额信息
+            this.postTokenBalances.forEach((val:any)=>{
+                if(val.accountIndex == ammone.poola){
+                    ammone.input = val.mint;
+                    ammone.inpool = val.uiTokenAmount.uiAmountString;
+                    ammone.in = new Decimal(ammone.in).div(10**val.uiTokenAmount.decimals).toString();
+                }
+                if(val.accountIndex == ammone.poolb){
+                    ammone.output = val.mint;
+                    ammone.outpool = val.uiTokenAmount.uiAmountString;
+                    ammone.out = new Decimal(ammone.out).div(10**val.uiTokenAmount.decimals).toString();
+                }
+            })
 
-        // 记录特定类型的交易日志
-        if(ammone.id==2) {
-            // 如果 amm 字段为空，设置为对应的程序ID或默认值
-            if (!ammone.amm || ammone.amm === "") {
-                // 根据 id 设置对应的 AMM 名称
-                switch(ammone.id) {
-                    case 2:
-                        ammone.amm = "Jupiter";
-                        ammone.name = "Jupiter Swap";
-                        break;
-                    // 可以添加其他类型的 AMM
-                    default:
-                        ammone.amm = "Unknown";
-                        break;
+            // 设置交易池A对应的账户地址
+            ammone.poola = this.accounts[open.destination];
+            // 设置交易池B对应的账户地址
+            ammone.poolb = this.accounts[close.source];
+
+            if(ammone.input == "" || ammone.output == "" || ammone.input == ammone.output) return false;
+           
+            // 记录特定类型的交易日志
+            if(ammone.id==2) {
+                // 如果 amm 字段为空，设置为对应的程序ID或默认值
+                if (!ammone.amm || ammone.amm === "") {
+                    // 根据 id 设置对应的 AMM 名称
+                    switch(ammone.id) {
+                        case 2:
+                            ammone.amm = "Jupiter";
+                            ammone.name = "Jupiter Swap";
+                            break;
+                        // 可以添加其他类型的 AMM
+                        default:
+                            ammone.amm = "Unknown";
+                            break;
+                    }
+                }
+             
+                
+                // 构建交易日志字符串
+                var txLog = `JP: ${CONFIG.SOLSCAN_URL}${this.signature} at RouterType: ${ammone.id}\n`;
+                // 添加代币交换信息
+                txLog += ammone.input + " swap " + ammone.output + "\n";
+                // 添加交换数量信息
+                txLog += ammone.in + " swap " + ammone.out + "\n\n";
+                // 将日志追加写入文件
+                fs.appendFileSync('./txLog.log', txLog);
+                
+                // 将交易数据存入Redis
+                try {
+                    // 使用交易签名作为键
+                    const key = `tx:${this.signature}`;
+                    // 将AMM数据转为JSON字符串存储
+                    await redisClient.set(key, JSON.stringify({
+                        ammData: ammone,
+                        timestamp: Date.now(),
+                        signature: this.signature,
+                        inputToken: ammone.input,
+                        outputToken: ammone.output,
+                        inputAmount: ammone.in,
+                        outputAmount: ammone.out
+                    }));
+                    
+                    // 设置过期时间(可选，例如7天)
+                    await redisClient.expire(key, 60 * 60 * 24 * 7);
+                    
+                    // 添加到交易列表(用于快速查询)
+                    await redisClient.lPush('recent_transactions', key);
+                    await redisClient.lTrim('recent_transactions', 0, 999); // 只保留最近1000条
+                } catch (error) {
+                    console.error('Redis存储错误:', error);
                 }
             }
-            
-            // 构建交易日志字符串
-            var txLog = `JP: ${CONFIG.SOLSCAN_URL}${this.signature} at RouterType: ${ammone.id}\n`;
-            // 添加代币交换信息
-            txLog += ammone.input + " swap " + ammone.output + "\n";
-            // 添加交换数量信息
-            txLog += ammone.in + " swap " + ammone.out + "\n\n";
-            // 将日志追加写入文件
-            fs.appendFileSync('./txLog.log', txLog);
-            
-            // 将交易数据存入Redis
-            try {
-                // 使用交易签名作为键
-                const key = `tx:${this.signature}`;
-                // 将AMM数据转为JSON字符串存储
-                await redisClient.set(key, JSON.stringify({
-                    timestamp: Date.now(),
-                    signature: this.signature,
-                    ammData: ammone,
-                    inputToken: ammone.input,
-                    outputToken: ammone.output,
-                    inputAmount: ammone.in,
-                    outputAmount: ammone.out
-                }));
-                
-                // 设置过期时间(可选，例如7天)
-                await redisClient.expire(key, 60 * 60 * 24 * 7);
-                
-                // 添加到交易列表(用于快速查询)
-                await redisClient.lPush('recent_transactions', key);
-                await redisClient.lTrim('recent_transactions', 0, 999); // 只保留最近1000条
-            } catch (error) {
-                console.error('Redis存储错误:', error);
-            }
+          
+            // 返回交易信息对象
+            return ammone;
         }
-        return true;
-    }
 
-    /**
-     * 获取SPL代币交易信息
-     * @param mainindex 主指令索引
-     * @returns SPL代币交易数组
-     */
+
     /**
      * 获取SPL代币交易信息
      * @param mainindex - 主指令索引
@@ -255,47 +289,15 @@ export class SwapParser{
         return spltokens;
     }
 
-    // 以下是各个DEX平台的交易解析方法
-    // 每个方法都遵循类似的模式：
-    // 1. 验证指令的有效性
-    // 2. 获取SPL代币交易信息
-    // 3. 解析AMM交易数据
+ 
 
     /**
      * SolFi交易解析方法
      * @param item - 交易指令项
      * @param mainindex - 主指令索引
      * @returns 解析是否成功
-     * 
-     * 该方法用于解析SolFi DEX的交易:
-     * 1. 验证账户数据的有效性
-     * 2. 获取SPL代币交易信息
-     * 3. 解析并返回AMM交易数据
      */
-    SolFi(item:any,mainindex:number){
-        // 验证账户数据长度和程序索引
-        if( item.accounts.toJSON().data.length < 17 ) {
-            if(item.accounts.toJSON().data[1] != item.programIdIndex){
-                return false;
-            }
-        }
-    
-        // 获取SPL代币交易信息
-        var spltokens = this.getSpltokens(mainindex);
-    
-        // 验证代币交易数量
-        if (spltokens.length !=2 ) {
-            return false;
-        }
-    
-        // 创建AMM路由信息并解析交易数据
-        var ammone = emptyRouterInfo(2);
-        const result = this.getAmmData(ammone,spltokens[0],spltokens[1]);
-        return result;
-    }
-    
-    // Meteora DLMM交易解析
-    MeteoraDLMM(item:any,mainindex:number){
+    SolFi(item:any, mainindex:number){
         if( item.accounts.toJSON().data.length < 17 ) {
             if(item.accounts.toJSON().data[1] != item.programIdIndex){
                 return false;
@@ -307,13 +309,40 @@ export class SwapParser{
             return false;
         }
     
+        var ammone = emptyRouterInfo(1);
+        return this.getAmmData(ammone, spltokens[0], spltokens[1]);
+    }
+
+    /**
+     * MeteoraDLMM交易解析
+     * @param item - 交易指令项
+     * @param mainindex - 主指令索引
+     * @returns 解析是否成功
+     */
+    MeteoraDLMM(item:any, mainindex:number){
+        if( item.accounts.toJSON().data.length < 17 ) {
+            if(item.accounts.toJSON().data[1] != item.programIdIndex){
+                return false;
+            }
+        }
+    
+        var spltokens = this.getSpltokens(mainindex);
+        if (spltokens.length !=2 ) {
+            return false;
+        }
+    
         var ammone = emptyRouterInfo(2);
-        const result = this.getAmmData(ammone,spltokens[0],spltokens[1]);
-        return result;
+        return this.getAmmData(ammone, spltokens[0], spltokens[1]);
     }
     
-    // RaydiumCLMM交易解析
-    RaydiumCLMM(item:any,mainindex:number){
+    /**
+     * RaydiumCLMM交易解析
+     * @param item - 交易指令项
+     * @param mainindex - 主指令索引
+     * @param accounts - 账户地址数组
+     * @returns 解析是否成功
+     */
+    RaydiumCLMM(item:any, mainindex:number){
         if( item.accounts.toJSON().data.length < 17 && item.accounts.toJSON().data[1] != item.programIdIndex){
             return false;
         }
@@ -322,13 +351,19 @@ export class SwapParser{
         if (spltokens.length !=2 ) {
             return false;
         }
-    
-        var ammone = emptyRouterInfo(2);
-        return this.getAmmData(ammone,spltokens[0],spltokens[1]);
+        
+        var ammone = emptyRouterInfo(3);
+        return this.getAmmData(ammone, spltokens[0], spltokens[1]);
     }
     
-    // ZeroFi交易解析
-    ZeroFi(item:any,mainindex:number){
+    /**
+     * ZeroFi交易解析
+     * @param item - 交易指令项
+     * @param mainindex - 主指令索引
+     * @param accounts - 账户地址数组
+     * @returns 解析是否成功
+     */
+    ZeroFi(item:any, mainindex:number){
         if(item.accounts.toJSON().data[0] != this.tokenProgramIndex){
             return false;
         }
@@ -338,8 +373,8 @@ export class SwapParser{
             return false;
         }
     
-        var ammone = emptyRouterInfo(2);
-        return this.getAmmData(ammone,spltokens[0],spltokens[1]);
+        var ammone = emptyRouterInfo(4);
+        return this.getAmmData(ammone, spltokens[0], spltokens[1]);
     }
 
     // StabbleWeightedSwap交易解析
@@ -757,9 +792,29 @@ export class SwapParser{
         return this.getAmmData(ammone,spltokens[0],spltokens[1]);
     }
 }
-//初始化新交易对
-function emptyRouterInfo(id?:number): RouterInfo {
-    return {id:id?id:0,amm: "",name:"",input: "",output: "",poola: "",poolb: "",in: "",out: "",inpool:"",outpool:""}
+/**
+ * 初始化一个新的交易路由信息对象
+ * @param id - 可选的路由ID,默认为0
+ * @returns RouterInfo - 包含交易路由所需全部字段的对象
+ */
+function emptyRouterInfo(id?: number): RouterInfo {
+    return {
+        type: "swap",      // 交易类型
+        id: id || 0,      // 路由ID
+        slot: 0,           // 区块槽位
+        signature: "",     // 交易签名
+        signer: "",        // 签名者
+        amm: "",          // AMM名称
+        name: "",         // 交易名称
+        input: "",        // 输入代币
+        output: "",       // 输出代币
+        poola: "",        // A池地址
+        poolb: "",        // B池地址
+        in: "",           // 输入数量
+        out: "",          // 输出数量
+        inpool: "",       // 输入池余额
+        outpool: ""       // 输出池余额
+    };
 }
 //解析数字
 function transferAmountData(data:any){

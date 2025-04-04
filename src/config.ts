@@ -98,7 +98,11 @@ export const JupSwaps: { [key: string]: string } = {
 }
 
 export interface RouterInfo{
-    id:number;
+    id:number;//Routertype
+    signature:string;
+    slot:number;
+    type:string;
+    signer:string;
     amm:string;
     name:string;
     input:string;

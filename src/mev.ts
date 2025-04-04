@@ -4,6 +4,7 @@ import base58 from "bs58";
 import { Programs, JupiterProgram, Token2022Program } from "./config";
 import { SwapParser } from "./transaction"
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token'
+import Decimal from 'decimal.js'; // 添加 Decimal 导入
 
 import * as dotenv from 'dotenv';
 import Tapchain from './tapchain';
@@ -22,7 +23,7 @@ loadData();
 
 /**
  * 初始化并启动GRPC客户端，处理交易数据流
- * @description 该函数负责建立GRPC连接，订阅交易数据，并处理接收到的交易信息
+ * @description 该函数负责建立GRPC连接，订阅交易数据，并处理接收到的交易信息parser
  */
 async function loadData(){
     // 初始化GRPC客户端
@@ -59,10 +60,23 @@ async function loadData(){
         stream.on("data", (data: { transaction: { transaction: any; slot: any; }; filters: string[]; }) => {
             try {
                 transactionCount++;
-                console.log('\n###########################################\n');
+                console.log('\n##########################################################\n');
                 console.log(`接收到新交易数据 #${transactionCount}`);
+                // 输出当前区块高度
+                // const slot = data?.transaction.slot;
+                // console.log(`当前区块高度: ${slot}`);
+
+
+                // 输出完整的data对象内容
+                // console.log('完整的data对象内容:', JSON.stringify(data, null, 2));
                 
+                // // 输出data对象的主要属性
+                // console.log('交易数据:', data?.transaction);
+                // console.log('过滤器:', data?.filters);
+                // process.exit();
                 // 验证数据有效性并处理helius交易
+
+
                 if(data?.transaction && data.filters[0] == 'helius'){
                     const value = data?.transaction.transaction;
                     const signature = base58.encode(Buffer.from(value.signature,'base64'))
@@ -91,8 +105,18 @@ async function loadData(){
                     const postTokenBalances = value.meta.postTokenBalances;
                     console.log(`交易包含 ${postTokenBalances?.length || 0} 条代币余额记录`);
                     
+                    const slot = data?.transaction.slot;
+                    console.log(`当前区块高度: ${slot}`);
                     // 初始化交易解析器
-                    const parser = new SwapParser(signature, innerInstructions, postTokenBalances, tokenProgramIndex, token2022ProgramIndex);
+                    const parser = new SwapParser(
+                        signature, 
+                        innerInstructions, 
+                        postTokenBalances, 
+                        tokenProgramIndex, 
+                        token2022ProgramIndex,
+                        slot,
+                        accounts  // 添加 accounts 参数
+                    );
                     
                     // 处理交易指令
                     processInstructions(instructions, accounts, parser, signature);
@@ -184,6 +208,11 @@ function parseAccounts(value: any): string[] {
     const loadedWritableAddresses = value.meta.loadedWritableAddresses || [];
     const loadedReadonlyAddresses = value.meta.loadedReadonlyAddresses || [];
     
+    // console.log('\n账户数据详情:');
+    // console.log('主要账户列表:', accountKeys);
+    // console.log('可写账户列表:', loadedWritableAddresses);
+    // console.log('只读账户列表:', loadedReadonlyAddresses);
+    
     console.log(`账户密钥数量: ${accountKeys.length}`);
     console.log(`可写地址数量: ${loadedWritableAddresses.length}`);
     console.log(`只读地址数量: ${loadedReadonlyAddresses.length}`); 
@@ -194,6 +223,7 @@ function parseAccounts(value: any): string[] {
         ...loadedWritableAddresses,
         ...loadedReadonlyAddresses
     ].forEach(ele => {
+        // 将base64编码的账户地址转换为base58格式并添加到账户数组中
         accounts.push(base58.encode(Buffer.from(ele, 'base64')));
     });
 
@@ -334,68 +364,94 @@ function processInstructions(instructions: any[], accounts: string[], parser: Sw
             return Promise.resolve(parser.Raydium(item, index));
         }
     };
-    
     // 并行处理所有指令
     Promise.all(instructions.map(async (item: any, mainindex: number) => {
-        // 将所有日志先收集到一个数组中
-        const logs: string[] = [];
+        const timestamp = new Date().toISOString();
         const programAddress = accounts[item.programIdIndex];
         const routertype = Programs.indexOf(programAddress);
         
-        logs.push(`\n处理指令 ${mainindex}:`);
-        logs.push(`- 程序地址: ${programAddress}`);
-        logs.push(`- 程序索引: ${item.programIdIndex}`);
-        logs.push(`- 路由类型: ${routertype}`);
+        // 指令基本信息
+        console.log(`\n[${timestamp}] 指令处理开始 ==================`);
+        console.log(`指令信息:`);
+        console.log(`  - 序号: #${mainindex}`);
+        console.log(`  - 程序地址: ${programAddress}`);
+        console.log(`  - 程序索引: ${item.programIdIndex}`);
+        console.log(`  - 路由类型: ${routertype >= 0 ? routertype : '未知'}`);
         
         if (routertype >= 0) {
-            logs.push(`- 对应程序: ${Programs[routertype]}`);
-        } else {
-            logs.push(`- 未知程序类型`);
+            console.log(`  - DEX名称: ${Programs[routertype]}`);
         }
         
         const handler = routerHandlers[routertype];
-        
         try {
-            // 如果找到对应的处理方法，则调用它
             if (handler) {
-                logs.push(`- 开始处理 ${Programs[routertype]} 类型指令`);
+                console.log(`\n处理状态:`);
+                console.log(`  - 开始处理 ${Programs[routertype]} 指令`);
                 
-                //instructions--instruction
-                const result = await handler(item, mainindex);
+                const result = await handler(item, mainindex);//instructions
                 if (result) {
-                    logs.push(`- 指令 ${mainindex} 处理成功: ${JSON.stringify(result)}`);
+                    console.log(`  - 状态: 成功`);
+                   
+                    if (result.type) console.log(`  - 交易类型: ${result.type}`);
+                    if (result.input) console.log(`  - 输入代币: ${result.input}`);
+                    if (result.output) console.log(`  - 输出代币: ${result.output}`);
+                    if (result.in) console.log(`  - 输入数量: ${result.in}`);
+                    if (result.out) console.log(`  - 输出数量: ${result.out}`);
+                    if (result.in && result.out) {
+                        const price = new Decimal(result.out).div(result.in).toString();
+                        console.log(`  - 交易价格: ${price}`);
+                    }
+
+                    if (result.amm) console.log(`  - 交易DEX: ${result.amm}`);
+                    
+                    // 完整JSON结果
+                    console.log(`  - 完整结果:\n    ${JSON.stringify(result, null, 2).replace(/\n/g, '\n    ')}`);
+
+                    // // // 成功处理后退出程序
+                    console.log('交易处理成功，程序退出...');
+                    process.exit(0);
+
                 } else {
-                    logs.push(`- 指令 ${mainindex} 无处理结果`);
+                    console.log(`  - 状态: 无结果`);
                 }
-                // 一次性输出该指令的所有日志
-                console.log(logs.join('\n'));
+                
+                console.log(`\n[${new Date().toISOString()}] 指令处理完成 ==================`);
                 return result;
             }
             
-            logs.push(`- 跳过不支持的指令类型: ${routertype}`);
-            console.log(logs.join('\n'));
+            console.log(`\n处理状态:`);
+            console.log(`  - 状态: 跳过`);
+            console.log(`  - 原因: 不支持的指令类型 ${routertype}`);
+            console.log(`\n[${new Date().toISOString()}] 指令处理完成 ==================`);
             return Promise.resolve();
             
         } catch (error) {
-            logs.push(`- 处理指令 ${mainindex} 时出错: ${error}`);
-            console.log(logs.join('\n'));
+            console.log(`\n处理状态:`);
+            console.log(`  - 状态: 错误`);
+            console.log(`  - 错误信息: ${error}`);
+            console.log(`\n[${new Date().toISOString()}] 指令处理完成 ==================`);
             return Promise.resolve();
         }
     })).then(results => {
         const validResults = results.filter(r => r);
-        const summary = [
-            `\n交易处理完成:`,
-            `- 总指令数: ${instructions.length}`,
-            `- 有效结果数: ${validResults.length}`
-        ];
+        const timestamp = new Date().toISOString();
+        
+        console.log(`\n[${timestamp}] 交易处理汇总 ==================`);
+        console.log(`统计信息:`);
+        console.log(`  - 总指令数: ${instructions.length}`);
+        console.log(`  - 有效结果数: ${validResults.length}`);
+        console.log(`  - 处理率: ${((validResults.length / instructions.length) * 100).toFixed(2)}%`);
+        
         if (validResults.length > 0) {
-            summary.push('- 有效结果详情:' + JSON.stringify(validResults, null, 2));
-            // 调试输出，如果有有效结果，暂停程序执行
-            console.log('检测到有效结果，程序暂停执行');
-            process.exit(0);
+            console.log(`\n有效结果详情:`);
+            console.log(JSON.stringify(validResults, null, 2).replace(/\n/g, '\n  '));
         }
-        console.log(summary.join('\n'));
+        
+        console.log(`\n[${new Date().toISOString()}] 交易处理完成 ==================`);
     }).catch(error => {
-        console.error(`处理交易 ${signature} 时出错:`, error);
+        const timestamp = new Date().toISOString();
+        console.error(`[${timestamp}] 错误: 处理交易 ${signature} 失败`);
+        console.error(`详细信息: ${error}`);
     });
+
 }

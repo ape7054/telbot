@@ -1,7 +1,7 @@
 import { Keypair, PublicKey, Transaction, TransactionInstruction, ComputeBudgetProgram } from '@solana/web3.js';
 import { getAssociatedTokenAddress, getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction } from '@solana/spl-token';
 
-import { request } from './init';
+import { request } from '../init';
 import * as dotenv from 'dotenv';
 dotenv.config();
 import bs58 from 'bs58'

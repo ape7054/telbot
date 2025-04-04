@@ -39,11 +39,21 @@ import { PublicKey, Keypair, Transaction,
     }
   
     /**
-     * 解析交易详情
-     * @param value
-     * @returns 
+     * 解析 Raydium 交易详情
+     * @param value - 交易响应对象
+     * @returns 解析后的交易信息对象
+     * - token: 代币地址
+     * - ammid: AMM池ID
+     * - signer: 交易签名者
+     * - signature: 交易签名
+     * - ammAuthority: AMM授权账户
+     * - amount: 交易数量
+     * - number: 代币数量
+     * - fee: 手续费
+     * - pooladd: 池子地址
+     * - type: 交易类型(buy/sell/error)
      */
-    async analyse(value:VersionedTransactionResponse){
+    async analyse(value:VersionedTransactionResponse) {
       const signature = value.transaction.signatures[0];
       const txType = {token:'',ammid:'',signer:'',signature,ammAuthority:'',amount:0,number:0,fee:0,pooladd:'',type:'error'};
       const compiledInstructions = value.transaction.message.compiledInstructions;
@@ -232,6 +242,17 @@ import { PublicKey, Keypair, Transaction,
      * @param model 
      * @param fee 
      * @returns 
+     */
+    /**
+     * Raydium交易接口
+     * @param privatekey - 私钥
+     * @param poolid - 交易池ID
+     * @param type - 交易类型(buy/sell)
+     * @param number - 交易数量
+     * @param gas - gas费用
+     * @param model - 交易模式
+     * @param fee - 手续费
+     * @returns Promise<{error:string,hash?:string,time?:number}>
      */
     async swapRaydium(
       privatekey:string, 

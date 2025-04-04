@@ -109,49 +109,102 @@ export class request {
     // 可追加参数{skipPreflight: true,maxRetries: 10,}，有屏蔽报错的效果
   }
 
-  async fetch(method:string,params:any,type:string) {
-    var time = Math.floor(new Date().getTime()/1000)
-    var url = config.RPC_URL;
-    if(type=='Blockhash') url = 'http://127.0.0.1:8899';
-    if(type=='frankfurt') url = 'http://157.90.64.187:8899';
-    if(type=='amsterdam') url = 'http://46.17.101.7:8899';
-    if(type=='Blockhash') url = config.RPC_URL;
-    if(type=='jito') url = 'https://frankfurt.mainnet.block-engine.jito.wtf/api/v1/bundles';
-    if(type=='jitomain') url = 'https://mainnet.block-engine.jito.wtf/api/v1/bundles';
-    if(type=='jito1') url = 'https://amsterdam.mainnet.block-engine.jito.wtf/api/v1/bundles';
-    if(type=='jito2') url = 'https://ny.mainnet.block-engine.jito.wtf/api/v1/bundles';
-    if(type=='jito3') url = 'https://tokyo.mainnet.block-engine.jito.wtf/api/v1/bundles';
-    if(type=='jito4') url = 'https://slc.mainnet.block-engine.jito.wtf/api/v1/bundles';
-    const client = axios.create({headers: {'Content-Type': 'application/json'}});
-    try {
-      const response = await client.post(url, {
-        id: 1,
-        jsonrpc: '2.0',
-        method,
-        params: params || [],
-      });
-      if(response.status==200){
-        if(type=='Blockhash'){
-            return response.data;
-        }else{
-          if(response.data.result !== undefined){
-            //console.log(type,response.data.result);
-            return {error:'',hash:response.data.result,time};
-          }else{
-            console.log(response.data.error.data.err);
-            console.log(response.data.error);
-            return {error:response.data.error.message};
-          }
-        }
-      }else{
-        console.log(url,`Response status: ${response.status}`);
-        return {error:'Response status'+response.status};
-      }
-    } catch (error) {
-      console.error(url,`HTTP error`);
-      return {error:'HTTP error'};
+  /**
+   * 发送网络请求的方法
+   * @param method 请求方法名
+   * @param params 请求参数
+   * @param type 节点类型
+   * @returns 请求结果
+   */
+async fetch(method: string, params: any, type: string) {
+    // 获取当前时间戳
+    const time = Math.floor(new Date().getTime() / 1000);
+    
+    // 默认使用配置的RPC URL
+    let url = config.RPC_URL;
+    
+    // 根据不同类型设置不同的URL
+    switch (type) {
+        case 'Blockhash':
+            url = 'http://127.0.0.1:8899';
+            break;
+        case 'frankfurt':
+            url = 'http://157.90.64.187:8899';
+            break;
+        case 'amsterdam':
+            url = 'http://46.17.101.7:8899';
+            break;
+        case 'Blockhash':
+            url = config.RPC_URL;
+            break;
+        case 'jito':
+            url = 'https://frankfurt.mainnet.block-engine.jito.wtf/api/v1/bundles';
+            break;
+        case 'jitomain':
+            url = 'https://mainnet.block-engine.jito.wtf/api/v1/bundles';
+            break;
+        case 'jito1':
+            url = 'https://amsterdam.mainnet.block-engine.jito.wtf/api/v1/bundles';
+            break;
+        case 'jito2':
+            url = 'https://ny.mainnet.block-engine.jito.wtf/api/v1/bundles';
+            break;
+        case 'jito3':
+            url = 'https://tokyo.mainnet.block-engine.jito.wtf/api/v1/bundles';
+            break;
+        case 'jito4':
+            url = 'https://slc.mainnet.block-engine.jito.wtf/api/v1/bundles';
+            break;
     }
-  }
+
+    // 创建axios实例并设置请求头为JSON格式
+    const client = axios.create({
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    });
+
+    try {
+        // 发送POST请求
+        const response = await client.post(url, {
+            id: 1,
+            jsonrpc: '2.0',
+            method,
+            params: params || [],
+        });
+
+        // 处理响应结果
+        if (response.status === 200) {
+            if (type === 'Blockhash') {
+                return response.data;
+            } else {
+                if (response.data.result !== undefined) {
+                    return {
+                        error: '',
+                        hash: response.data.result,
+                        time
+                    };
+                } else {
+                    console.log(response.data.error.data.err);
+                    console.log(response.data.error);
+                    return {
+                        error: response.data.error.message
+                    };
+                }
+            }
+        } else {
+            console.log(url, `Response status: ${response.status}`);
+            return {
+                error: 'Response status' + response.status
+            };
+        }
+    } catch (error) {
+        console.error(url, 'HTTP error');
+        return {
+            error: 'HTTP error'
+        };
+    }
+}
 }
 
 export class helius {

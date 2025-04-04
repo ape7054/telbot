@@ -61,24 +61,24 @@ async function loadData(){
             accountKeys.forEach((ele: string) => {
                 const base58Address = base58.encode(Buffer.from(ele,'base64'));
                 accounts.push(base58Address);
-                accountCount++; // 增加计数
-                console.log(`账户地址 ${accountCount}:`, base58Address); // 显示带编号的账户地址
+                // accountCount++; // 增加计数
+                // console.log(`账户地址 ${accountCount}:`, base58Address); // 显示带编号的账户地址
             })
             
             loadedWritableAddresses.forEach((ele: string) => {
                 const base58Address = base58.encode(Buffer.from(ele,'base64'));
                 accounts.push(base58Address);
-                console.log('可写账户地址:', base58Address); // 调试输出可写账户地址
+                // console.log('可写账户地址:', base58Address); // 调试输出可写账户地址
             })
             
             loadedReadonlyAddresses.forEach((ele: string) => {
                 const base58Address = base58.encode(Buffer.from(ele,'base64'));
                 accounts.push(base58Address);
-                console.log('只读账户地址:', base58Address); // 调试输出只读账户地址
+                // console.log('只读账户地址:', base58Address); // 调试输出只读账户地址
                 
             })
             
-            console.log('所有账户地址列表:', accounts); // 调试输出完整的账户地址列表
+            // console.log('所有账户地址列表:', accounts); // 调试输出完整的账户地址列表
             // 查找Pump程序在账户列表中的索引
             var pumpProgramIndex=-1;
         
@@ -97,6 +97,10 @@ async function loadData(){
             
             // 解析交易指令
             var instructions = value.transaction.message.instructions;
+            // console.log(`交易连接：https://solscan.io/tx/${signature}`);
+      
+       
+
             instructions.forEach((element: { programIdIndex: number; accounts: { toJSON: () => { (): any; new(): any; data: any; }; }; }) => {
                 // 查找Pump程序的指令
                 
@@ -222,17 +226,17 @@ async function loadData(){
                     // 根据代币数量变化判断交易类型(买入/卖出)
                     hashInfo.type = Number(beforeToken)>Number(pollToken)?'buy':'sell';
                     // 发送交易信息
-// 输出交易链接到控制台
-                    console.log(`交易链接：https://solscan.io/tx/${signature}`);
+                    // 输出交易链接到控制台
+                    // console.log(`交易链接：https://solscan.io/tx/${signature}`);
 
                     
-                    console.log('Debug rayInfo:', JSON.stringify(hashInfo, null, 2));
+                    // console.log('构建的交易对象:', JSON.stringify(hashInfo, null, 2));
 
 
                     tapchain.sendPumpInfo(hashInfo);
 
 
-                    process.exit(0);
+                    // process.exit(0);
 
                     //tapchain.analyseSignerData(hashInfo);
                 }
@@ -277,17 +281,28 @@ async function loadData(){
             var loadedWritableAddresses = value.meta.loadedWritableAddresses;
             // 只读账户
             var loadedReadonlyAddresses = value.meta.loadedReadonlyAddresses;
-            
             // 将所有账户地址转换为base58格式并添加到accounts数组
+            let accountCount = 0; // 用于记录账户数量
             accountKeys.forEach((ele: string) => {
-                accounts.push(base58.encode(Buffer.from(ele,'base64')));
+                const base58Address = base58.encode(Buffer.from(ele,'base64'));
+                accounts.push(base58Address);
+                accountCount++;
+                console.log(`账户地址 ${accountCount}:`, base58Address); // 显示带编号的账户地址
             })
+            
             loadedWritableAddresses.forEach((ele: string) => {
-                accounts.push(base58.encode(Buffer.from(ele,'base64')));
+                const base58Address = base58.encode(Buffer.from(ele,'base64'));
+                accounts.push(base58Address);
+                console.log('可写账户地址:', base58Address); // 输出可写账户地址
             })
+            
             loadedReadonlyAddresses.forEach((ele: string) => {
-                accounts.push(base58.encode(Buffer.from(ele,'base64')));
+                const base58Address = base58.encode(Buffer.from(ele,'base64'));
+                accounts.push(base58Address);
+                console.log('只读账户地址:', base58Address); // 输出只读账户地址
             })
+            
+            console.log('所有账户地址列表:', accounts); // 输出完整的账户地址列表
             
             // 遍历账户列表查找各种程序的索引位置
             var rayProgramIndex = -1, tokenProgramIndex=-1, lifinityProgramIndex=-1;
@@ -325,6 +340,52 @@ async function loadData(){
             
             // 解析交易指令
             var instructions = value.transaction.message.instructions;
+      
+            
+            // 解析并格式化指令数据
+            const parsedInstructions = instructions.map((instruction: any, index: number) => {
+                // 获取程序ID
+                const programId = accounts[instruction.programIdIndex];      
+                // 解析账户索引数组
+                let instructionAccounts: string[] = [];
+                if (instruction.accounts) {
+                    try {
+                        // 将Buffer转换为数组
+                        const accountIndices = Array.from(Buffer.from(instruction.accounts, 'base64'));
+                        // 将索引映射到实际账户地址
+                        accountIndices.forEach((accountIndex: number) => {
+                            if (accounts[accountIndex]) {
+                                instructionAccounts.push(accounts[accountIndex]);
+                            }
+                        });
+                    } catch (error) {
+                        console.error('解析账户数组失败:', error);
+                    }
+                }
+                // 解析指令数据
+                let instructionData = '';
+                if (instruction.data) {
+                    try {
+                        // 获取原始数据Buffer并转换为base58格式
+                        instructionData = base58.encode(Buffer.from(instruction.data, 'base64'));
+                    } catch (error) {
+                        console.error('解析指令数据失败:', error);
+                    }
+                }         
+                // 返回格式化的指令对象
+                return {
+                    accounts: instructionAccounts,
+                    data: instructionData,
+                    programId: programId,
+               
+                };
+            });        
+            // 输出格式化后的指令
+            // console.log('解析后的指令:', JSON.stringify(parsedInstructions, null, 2));
+            console.log('解析后的指令:',parsedInstructions);
+            console.log("未解析的指令:",instructions); // 输出完整的账户地址列表
+
+            // 继续原有的处理逻辑
             instructions.forEach((element: { programIdIndex: number; accounts: { toJSON: () => { (): any; new(): any; data: any; }; }; }) => {
                 if(element.programIdIndex == rayProgramIndex){
                 var accountsData = element.accounts.toJSON().data;
@@ -435,12 +496,12 @@ async function loadData(){
                     
                     if(rayInfo.token_reserves && rayInfo.sol_reserves){
                         rayInfo.price = (new Decimal(rayInfo.sol_reserves)).div(10**(9-decimals)).div(new Decimal(rayInfo.token_reserves)).toFixed(15);
-                        // 输出交易链接到控制台
-                        // console.log(`交易连接：https://solscan.io/tx/${signature}`)
-                          
+                        console.log(`交易连接：https://solscan.io/tx/${signature}`);
+                        console.log('Raydium交易对象:', rayInfo);
+                        
                         tapchain.sendRayInfo(rayInfo);
 
-                        // process.exit(0);
+                        process.exit(0);
                         
                     }
                     
