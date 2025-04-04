@@ -1,5 +1,5 @@
-import bs58 from "bs58";
-import fs from "fs";
+import bs58 from 'bs58';
+import fs from 'fs';
 import * as dotenv from 'dotenv';
 dotenv.config();
 // // 假设你的私钥是 Base58 格式
@@ -12,7 +12,7 @@ const privateKeyArray = bs58.decode(privateKeyBase58);
 const privateKeyJson = Array.from(privateKeyArray);
 console.log(privateKeyJson);
 // 保存为 JSON 文件
-const walletPath = "wallet.json"; // 保存路径
+const walletPath = 'wallet.json'; // 保存路径
 fs.writeFileSync(walletPath, JSON.stringify(privateKeyJson));
 
-console.log("Wallet JSON saved to:", walletPath);
+console.log('Wallet JSON saved to:', walletPath);
