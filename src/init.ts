@@ -368,16 +368,17 @@ export const config = {
   RPC_URL: 'http://192.69.194.50:10001',
   WSS_URL: 'wss://192.69.194.50:10001',
   BIG_URL: 'http://127.0.0.1:8899',
-  grpc_url: 'http://192.69.194.50:10001',
+  grpc_url: process.env.GRPC_URL || 'https://solana-yellowstone-grpc.publicnode.com:443',
   atlas_wss: 'wss://192.69.194.50:10001',
   solprice: 251,
-  host: '172.18.0.4',
-  rspwd: 'redis_CDmEZB',
+  // 更新Redis配置以匹配docker-compose.yml
+  host: 'localhost',
+  rshost: process.env.REDIS_HOST || 'localhost',
+  rspwd: process.env.REDIS_PASSWORD || 'tapai123456',
   rsdb: 0,
   rsdb2: 1,
-  rshost: '172.18.0.4',
-  //botapi:"7222946050:AAGuGHLkafv5aivDODi_Bd2Xcz5fm4XiSR8"
-  botapi: '7536243541:AAGvCd0pfbJJtabv83FIWfGSUfzCtvpQLlA',
+  // 更新Telegram Bot配置
+  botapi: process.env.TELEGRAM_BOT_TOKEN || '8195327696:AAEnqADO_ViwCHpx-cL518aJ9kYA4gswhc8',
   pump_program: '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P',
   raydium_program: '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8',
   usdt: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',

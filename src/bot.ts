@@ -7,12 +7,17 @@ import Tapchain from './tapchain0';
 import { Redis } from 'ioredis';
 
 import bs58 from 'bs58'
-const redis = new Redis({host:config.rshost,port:6379,password:config.rspwd,db: config.rsdb});
+const redis = new Redis({
+  host: process.env.REDIS_HOST || config.rshost,
+  port: parseInt(process.env.REDIS_PORT || '6379'),
+  password: process.env.REDIS_PASSWORD || config.rspwd,
+  db: config.rsdb
+});
 const client = new request;
 const botFun = new BotFun();
 const tapchain = new Tapchain();
 const Decimal = require('decimal.js');
-const bot = new Bot(config.botapi);
+const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN || config.botapi);
 
 const { menu, followMenu, flowMenu, tokenMenu, noUserMenu, snipeMenu, snipeAutoMenu, snipeDetailMenu, settingMenu, tokensMenu, analyseTokenMenu } = require('./menu');
 let bankinfo = {address:'',jitoFee:0.0025,fastsell:0,sellbili:100,name:'',status:1,gas:0.005,gasSell:0.005,addTip:10000,buyRay:1,buyPump:1,autoSell:1,maxwin:50,maxlose:20,pumpfee:50,rayfee:50,pumpPoolRange:'0-80',rayPoolRange:'0-1000'};
@@ -330,6 +335,7 @@ bot.on("message", async (ctx) => {
     }
     return botFun.detail_fun(fromId,address,ctx);
   }else if(status == 'setGasSell'){  //设置卖币GAS
+    // 验证输入的卖币GAS是否为有效数字
     if(Number.isNaN(parseFloat(text))){
       return ctx.reply("输入金额错误");
     }
@@ -344,7 +350,8 @@ bot.on("message", async (ctx) => {
       redis.set(addKey, JSON.stringify(bankinfo));
     }
     return botFun.detail_fun(fromId,address,ctx);
-  }else if(status == 'setPumpfee'){
+  }else if(status == 'setPumpfee'){ // 设置Pump滑点
+    // 验证输入的Pump滑点是否在1-100之间
     if(Number.isNaN(parseFloat(text)) || Number(text)<1 || Number(text)>100){
       return ctx.reply("输入Pump滑点错误");
     }
@@ -359,7 +366,8 @@ bot.on("message", async (ctx) => {
       redis.set(addKey, JSON.stringify(bankinfo));
     }
     return botFun.detail_fun(fromId,address,ctx);
-  }else if(status == 'setRayfee'){
+  }else if(status == 'setRayfee'){ // 设置Ray滑点
+    // 验证输入的Ray滑点是否在1-100之间
     if(Number.isNaN(parseFloat(text)) || Number(text)<1 || Number(text)>100){
       return ctx.reply("输入Ray滑点错误");
     }
@@ -374,7 +382,8 @@ bot.on("message", async (ctx) => {
       redis.set(addKey, JSON.stringify(bankinfo));
     }
     return botFun.detail_fun(fromId,address,ctx);
-  }else if(status == 'setMaxWin'){
+  }else if(status == 'setMaxWin'){ // 设置止盈比例
+    // 验证输入的止盈比例是否为有效数字
     if(Number.isNaN(parseFloat(text))){
       return ctx.reply("输入止盈比例错误");
     }
@@ -389,7 +398,8 @@ bot.on("message", async (ctx) => {
       redis.set(addKey, JSON.stringify(bankinfo));
     }
     return botFun.detail_fun(fromId,address,ctx);
-  }else if(status == 'setMaxLose'){
+  }else if(status == 'setMaxLose'){ // 设置止损比例
+    // 验证输入的止损比例是否为有效数字
     if(Number.isNaN(parseFloat(text))){
       return ctx.reply("输入止损比例错误");
     }
@@ -405,6 +415,7 @@ bot.on("message", async (ctx) => {
     }
     return botFun.detail_fun(fromId,address,ctx);
   }else if(status == 'addKillWin'){ //分段止盈
+    // 验证输入的金额和比例是否在有效范围内
     var [num,bili] = text.split(",");
     if(Number(num)<0 || Number(num)>100) return ctx.reply("输入金额错误");
     if(Number(bili)<0 || Number(bili)>100) return ctx.reply("输入比例错误");
@@ -414,6 +425,7 @@ bot.on("message", async (ctx) => {
     await redis.rpush('bank:'+myaddress+":killwin:"+address,text);
     return botFun.detail_fun(fromId,address,ctx);
   }else if(status == 'addKillLose'){ //分段止损
+    // 验证输入的金额和比例是否在有效范围内
     var [num,bili] = text.split(",");
     if(Number(num)<0 || Number(num)>100) return ctx.reply("输入金额错误");
     if(Number(bili)<0 || Number(bili)>100) return ctx.reply("输入比例错误");
@@ -422,7 +434,8 @@ bot.on("message", async (ctx) => {
     var myaddress = await botFun.redisGet(fromId+":address");
     await redis.rpush('bank:'+myaddress+":killlose:"+address,text);
     return botFun.detail_fun(fromId,address,ctx);
-  }else if(status == 'setSellBili'){
+  }else if(status == 'setSellBili'){ // 设置卖出比例
+    // 验证输入的卖出比例是否在10-100之间
     if(Number.isNaN(parseFloat(text))){
       return ctx.reply("输入比例错误");
     }
@@ -440,7 +453,8 @@ bot.on("message", async (ctx) => {
       redis.set(addKey, JSON.stringify(bankinfo));
     }
     return botFun.detail_fun(fromId,address,ctx);
-  }else if(status == 'setFastSell'){
+  }else if(status == 'setFastSell'){ // 设置快速卖出模式
+    // 验证输入的快速卖出参数是否为非负整数
     var fastSell = parseInt(text);
     if(Number.isNaN(fastSell) || fastSell<0){
       return ctx.reply("输入快跑模式参数错误");
@@ -456,7 +470,8 @@ bot.on("message", async (ctx) => {
       redis.set(addKey, JSON.stringify(bankinfo));
     }
     return botFun.detail_fun(fromId,address,ctx);
-  }else if(status == 'setFollowJitoFee'){
+  }else if(status == 'setFollowJitoFee'){ // 设置Jito费用
+    // 验证输入的Jito费用是否为非负数
     if(Number.isNaN(text) || Number(text)<0){
       return ctx.reply("输入快跑模式参数错误");
     }
@@ -472,7 +487,8 @@ bot.on("message", async (ctx) => {
     }
     await ctx.reply("贿赂小费设置成功");
     return botFun.detail_fun(fromId,address,ctx);
-  }else if(status == 'setRayPoolRange'){
+  }else if(status == 'setRayPoolRange'){ // 设置Ray池子范围
+    // 验证输入的范围格式和数值
     var [min,max] = text.split('-');
     if(Number.isNaN(min) || Number.isNaN(max) || Number(min)<0 || Number(max)<0 || Number(max)<Number(min)){
       return ctx.reply("输入快跑模式参数错误");
@@ -489,7 +505,8 @@ bot.on("message", async (ctx) => {
     }
     await ctx.reply("✅池子范围设置成功");
     return botFun.detail_fun(fromId,address,ctx);
-  }else if(status == 'setPumpPoolRange'){
+  }else if(status == 'setPumpPoolRange'){ // 设置Pump池子范围
+    // 验证输入的范围格式和数值
     var [min,max] = text.split('-');
     if(Number.isNaN(min) || Number.isNaN(max) || Number(min)<0 || Number(max)<0 || Number(max)<Number(min)){
       return ctx.reply("输入快跑模式参数错误");
@@ -508,7 +525,7 @@ bot.on("message", async (ctx) => {
     return botFun.detail_fun(fromId,address,ctx);
 
   //自定义金额买卖币
-  }else if(status == 'buyXToken'){
+  }else if(status == 'buyXToken'){ // 自定义金额买入代币
     var amount = Number(text);    
     console.log('buyXToken',amount);
     await redis.set(fromId+":status","");
@@ -523,7 +540,7 @@ bot.on("message", async (ctx) => {
     var {msg,error} = await botFun.menuBuy(token,address,amount);
     if(msg) return ctx.reply("购买失败,错误原因:"+msg);
     return botFun.detail_token(ctx,address,fromId,token);
-  }else if(status == 'sellXToken'){
+  }else if(status == 'sellXToken'){ // 自定义比例卖出代币
     var amount = Number(text);     
     console.log('sellXToken',amount);
     await redis.set(fromId+":status","");

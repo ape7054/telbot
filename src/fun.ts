@@ -33,9 +33,9 @@ const tapchain = new Tapchain();
 
 // 初始化 Redis 连接
 const redis = new Redis({
-  host: config.rshost,
-  port: 6379,
-  password: config.rspwd,
+  host: process.env.REDIS_HOST || config.rshost,
+  port: parseInt(process.env.REDIS_PORT || '6379'),
+  password: process.env.REDIS_PASSWORD || config.rspwd,
   db: config.rsdb,
 });
 export default class BotFun {

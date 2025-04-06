@@ -8,13 +8,13 @@ import BotFun from './fun';
 import Decimal from 'decimal.js';
 import { config } from './init';
 
-// 初始化 Redis 连接
+//初始化 Redis 连接
 const redis = new Redis({
-  host: config.rshost,
-  port: 6379,
-  password: config.rspwd,
+  host: process.env.REDIS_HOST || config.rshost,
+  port: parseInt(process.env.REDIS_PORT || '6379'),
+  password: process.env.REDIS_PASSWORD || config.rspwd,
   db: config.rsdb,
-});
+});;
 /**
  * 资产菜单 - 显示用户持有的代币列表
  * 支持查看代币详情和快速清仓操作

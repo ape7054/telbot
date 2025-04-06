@@ -13,6 +13,10 @@ const usdtstr = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 
 const emptyRouterInfo = (name?: string): RouterInfo => ({
   id: 0,
+  signature: '',  // 新增字段
+  slot: 0,        // 新增字段
+  type: '',       // 新增字段
+  signer: '',     // 新增字段
   amm: '',
   name: name ? name : '',
   input: '',
@@ -89,6 +93,10 @@ export class JupiterSwap {
               name: 'Lifinity V2',
               amm: '',
               id: 0,
+              signature: '',  // 新增字段
+              slot: 0,        // 新增字段
+              type: '',       // 新增字段
+              signer: '',     // 新增字段
               poola: '',
               poolb: '',
               in: '',
@@ -102,6 +110,10 @@ export class JupiterSwap {
               name: 'Raydium',
               amm: '',
               id: 0,
+              signature: '',  // 新增字段
+              slot: 0,        // 新增字段
+              type: '',       // 新增字段
+              signer: '',     // 新增字段
               poola: '',
               poolb: '',
               in: '',
@@ -115,6 +127,10 @@ export class JupiterSwap {
               name: 'SolFi',
               amm: '',
               id: 0,
+              signature: '',  // 新增字段
+              slot: 0,        // 新增字段
+              type: '',       // 新增字段
+              signer: '',     // 新增字段
               poola: '',
               poolb: '',
               in: '',
@@ -165,6 +181,10 @@ export class JupiterSwap {
         name: 'SolFi',
         amm: '',
         id: 0,
+        signature: '',  // 新增签名字段
+        slot: 0,        // 新增区块高度
+        type: '',       // 新增交易类型
+        signer: '',     // 新增签名者
         poola: '',
         poolb: '',
         in: '',
