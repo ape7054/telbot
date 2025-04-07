@@ -1,37 +1,54 @@
 version: '3'
 networks:
+  # 定义网络配置
   tapchain:
+    # 使用bridge网络驱动
     driver: bridge
     
 services: 
-
-    # PHPRedisAdmin ################################################
+    # PHPRedisAdmin服务配置 #########################################
     redisadmin:
+      # 使用phpredisadmin最新版本镜像
       image: erikdubbelboer/phpredisadmin:latest
+      # 设置容器名称
       container_name: redisadmin
+      # 开启标准输入
       stdin_open: true
+      # 分配伪终端
       tty: true
+      # 容器自动重启策略
       restart: always
+      # 环境变量配置
       environment:
-        - ADMIN_USER=admin
-        - ADMIN_PASS=123456
-        - REDIS_1_HOST=redis
-        - REDIS_1_PORT=6379
-        - REDIS_1_AUTH=tapai123456
+        - ADMIN_USER=admin          # 管理员用户名
+        - ADMIN_PASS=123456         # 管理员密码
+        - REDIS_1_HOST=redis        # Redis主机地址
+        - REDIS_1_PORT=6379         # Redis端口
+        - REDIS_1_AUTH=tapai123456  # Redis认证密码
+      # 连接到tapchain网络
       networks:
         - tapchain
+      # 端口映射：主机16379映射到容器80
       ports:
         - "16379:80"
-        
+    # Redis服务配置 #################################################
     redis:
+      # 使用最新版本的Redis镜像
       image: redis:latest
+      # 容器名称设置为redis
       container_name: redis
+      # 开启标准输入
       stdin_open: true
+      # 分配伪终端
       tty: true
+      # Redis服务器启动命令，设置访问密码
       command: redis-server --requirepass tapai123456
+      # 容器自动重启策略
       restart: always
+      # 连接到tapchain网络
       networks:
         - tapchain
+      # 端口映射：主机7001映射到容器6379
       ports:
         - "7001:6379"
         

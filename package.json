@@ -63,6 +63,7 @@
         "jito-js-rpc": "^0.1.0",
         "node-telegram-bot-api": "^0.66.0",
         "redis": "^4.7.0",
+        "telegraf": "^4.16.3",
         "transaction": "^0.0.2",
         "tsc": "^2.0.4",
         "ws": "^8.18.0"

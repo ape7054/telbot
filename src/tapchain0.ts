@@ -825,16 +825,23 @@ export default class Tapchain {
         var realsol = Math.floor(outer.sol * 1000000000);
         if (outer.buy > 0) {
           //保存每个地址每个币的盈亏数据
+          // 将交易者的分析数据存储到Redis有序集合中
+          // address: 交易者地址
+          // realsol: 交易SOL数量(已转换为lamports)
+          // token: 代币地址 
+          // holdtime: 持有时间
+          // buy/sell: 买入/卖出次数
           redis2.zadd(
             'analyse:signer:' + address,
             realsol,
             JSON.stringify({
               token,
-              holdtime,
+              holdtime, 
               buy: outer.buy,
               sell: outer.sell,
             })
           );
+          
           if (address == minter) {
             redis2.zadd('analyse:minter', realsol, address);
           } else {

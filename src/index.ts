@@ -19,15 +19,15 @@ let hashNull: obj = {};
 // 创建 Solana 日志监听器
 const listeners: number[] = [];
 const redis = new Redis({
-  host: config.rshost,
-  port: 6379,
-  password: config.rspwd,
+  host: process.env.REDIS_HOST || config.rshost,
+  port: parseInt(process.env.REDIS_PORT || '7001'),
+  password: process.env.REDIS_PASSWORD || config.rspwd,
   db: config.rsdb,
 });
 const redis2 = new Redis({
-  host: config.rshost,
-  port: 6379,
-  password: config.rspwd,
+  host: process.env.REDIS_HOST || config.rshost,
+  port: parseInt(process.env.REDIS_PORT || '7001'),
+  password: process.env.REDIS_PASSWORD || config.rspwd,
   db: config.rsdb,
 });
 const solana = new Connection(config.RPC_URL, {

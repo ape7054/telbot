@@ -34,9 +34,9 @@ import { Redis } from 'ioredis';
 import { config, request, utils } from './init'; // Import the configuration
 const Decimal = require('decimal.js');
 const redis = new Redis({
-  host: config.rshost,
-  port: 6379,
-  password: config.rspwd,
+  host: process.env.REDIS_HOST || config.rshost,
+  port: parseInt(process.env.REDIS_PORT || '7001'),
+  password: process.env.REDIS_PASSWORD || config.rspwd,
   db: config.rsdb,
 });
 
