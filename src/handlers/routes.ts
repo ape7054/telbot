@@ -1,6 +1,9 @@
 import TelegramBot from 'node-telegram-bot-api';
-import Router from './Router';
+import Router from './test-Router';
 
+// 设置路由处理函数
+// @param bot - Telegram机器人实例
+// @param router - 路由实例
 export function setupRoutes(bot: TelegramBot, router: Router) {
     // 注册信息收集路由
     router.registerRoute('info', {

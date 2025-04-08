@@ -1,8 +1,12 @@
-// 导入环境变量配置
+import Router from '../handlers/test-Router';
+import { setupRoutes } from '../handlers/routes';
 require('dotenv').config();
 
 // 导入Telegram机器人API和代理模块
-const TelegramBot = require('node-telegram-bot-api');
+// 在文件顶部的导入部分添加
+// 修改导入语句，添加 CallbackQuery 类型
+import TelegramBot, { Message, CallbackQuery } from 'node-telegram-bot-api';
+
 const { HttpsProxyAgent } = require('https-proxy-agent');  // 修改导入方式
 
 // 从环境变量获取Telegram机器人Token
@@ -34,7 +38,8 @@ const bot = new TelegramBot(token, {
     },
     request: {
         agent: agent,         // 使用配置的代理
-        timeout: 30000       // 请求超时时间
+        timeout: 30000,      // 请求超时时间
+        url: 'https://api.telegram.org'  // 添加必需的 url 属性
     }
 });
 
@@ -52,7 +57,7 @@ interface BotInfo {
 }
 
 // 添加启动确认，验证机器人连接状态
-bot.getMe().then((botInfo: BotInfo) => {
+bot.getMe().then((botInfo: TelegramBot.User) => {
     console.log('✅ 机器人连接成功！');
     console.log('机器人信息:', botInfo);
 }).catch((error: Error) => {
@@ -76,41 +81,64 @@ bot.on('error', (error: Error) => {
     console.error('Bot错误:', error);
 });
 
-// 处理 /start 命令
-bot.onText(/\/start/, (msg: { chat: { id: number }, from?: { first_name?: string } }) => {
-    const chatId = msg.chat.id;
-    const firstName = msg.from?.first_name || '朋友';
+// 创建路由实例
+const router = new Router();
 
-    bot.sendMessage(chatId, `你好，${firstName}！欢迎使用本 Bot 😊\n你可以发送任意内容，我会回显你的消息。`);
+// 注册信息收集路由
+router.registerRoute('info', {
+    start: (msg, data) => {
+        const session = router.getSession(msg.chat.id);
+        if (session) {
+            session.state = 'ASK_NAME';  // 更新会话状态
+        }
+        bot.sendMessage(msg.chat.id, '你好！请告诉我你的名字？');
+    },
+    steps: {
+        ASK_NAME: (msg, data) => {
+            data.name = msg.text;
+            const session = router.getSession(msg.chat.id);
+            if (session) {
+                session.state = 'ASK_AGE';  // 更新状态
+            }
+            bot.sendMessage(msg.chat.id, '好的，接下来请输入你的年龄：');
+        },
+        ASK_AGE: (msg, data) => {
+            if (isNaN(Number(msg.text))) {
+                bot.sendMessage(msg.chat.id, '请输入有效的年龄数字！');
+                return;
+            }
+            data.age = msg.text;
+            const session = router.getSession(msg.chat.id);
+            if (session) {
+                session.state = 'ASK_HOBBY';  // 更新状态
+            }
+            bot.sendMessage(msg.chat.id, '最后一个问题：你的爱好是什么？');
+        },
+        ASK_HOBBY: (msg, data) => {
+            data.hobby = msg.text;
+            bot.sendMessage(
+                msg.chat.id,
+                `✅ 信息收集完成：\n姓名：${data.name}\n年龄：${data.age}\n爱好：${data.hobby}`
+            );
+            return true; // 结束会话
+        }
+    }
 });
 
-// 定义用户状态和会话数据接口
-type UserState = 'ASK_NAME' | 'ASK_AGE' | 'ASK_HOBBY' | 'DONE';
-
-interface ConversationData {
-    state: UserState;
-    data: {
-        name?: string;
-        age?: string;
-        hobby?: string;
-    };
-}
-
-// 用户会话管理
-//// 存储新的会话数据
-// userSessions.set(123456, {
-//     state: 'ASK_NAME',
-//     data: {
-//         name: '张三',
-//         age: '25'
-//     }
-// });
-
-
-// 处理 /help 命令
-bot.onText(/\/help/, (msg: { chat: { id: number } }) => {
-    const chatId = msg.chat.id;
-    const helpText = `
+// 注册基础命令路由
+router.registerRoute('start', {
+    start: (msg: { chat: { id: number }, from?: { first_name?: string } }) => {
+        const firstName = msg.from?.first_name || '朋友';
+        bot.sendMessage(
+            msg.chat.id,
+            `你好，${firstName}！欢迎使用本 Bot 😊\n你可以发送任意内容，我会回显你的消息。`
+        );
+    }
+});
+// 注册帮助命令路由，显示所有可用的命令列表
+router.registerRoute('help', {
+    start: (msg: Message) => {
+        const helpText = `
 可用命令:
 /start - 启动机器人，发送欢迎消息
 /help - 显示帮助信息
@@ -119,100 +147,30 @@ bot.onText(/\/help/, (msg: { chat: { id: number } }) => {
 
 你还可以直接发送任意文字，我会回显给你 😄
 `;
-    bot.sendMessage(chatId, helpText);
-});
-
-
-const userSessions = new Map<number, ConversationData>();
-// 处理 /info 命令
-bot.onText(/\/info/, (msg: { chat: { id: number } }) => {
-    const chatId = msg.chat.id;
-
-    // 初始化用户会话状态，设置初始状态为询问名字
-    userSessions.set(chatId, {
-        state: 'ASK_NAME',
-        data: {}
-    });
-
-    bot.sendMessage(chatId, '你好！请告诉我你的名字？');
-});
-
-// 处理消息
-bot.on('message', (msg: { chat: { id: number }, text?: string }) => {
-    // 获取聊天ID
-    const chatId = msg.chat.id;
-    // 获取消息文本内容
-    const text = msg.text;
-
-    // 忽略命令和空消息
-    if (!text || text.startsWith('/')) return;
-
-    const session = userSessions.get(chatId);
-    if (!session) {
-        // 如果不在会话中，执行默认的回显功能
-        bot.sendMessage(chatId, `你说了：${text}`);
-        return;
-    }
-
-    // 从会话中解构状态和数据
-    const { state, data } = session;
-
-    // 根据当前状态处理用户输入
-    switch (state) {
-        // 处理用户名输入阶段
-        case 'ASK_NAME':
-            data.name = text;
-            session.state = 'ASK_AGE';
-            bot.sendMessage(chatId, '好的，接下来请输入你的年龄：');
-            break;
-
-        // 处理年龄输入阶段
-        case 'ASK_AGE':
-            // 验证年龄输入是否为有效数字
-            if (isNaN(Number(text))) {
-                bot.sendMessage(chatId, '请输入有效的年龄数字！');
-                return;
-            }
-            data.age = text;
-            session.state = 'ASK_HOBBY';
-            bot.sendMessage(chatId, '最后一个问题：你的爱好是什么？');
-            break;
-
-        // 处理爱好输入阶段
-        case 'ASK_HOBBY':
-            data.hobby = text;
-            session.state = 'DONE';
-            // 展示收集到的所有信息
-            bot.sendMessage(chatId, `✅ 信息收集完成：\n姓名：${data.name}\n年龄：${data.age}\n爱好：${data.hobby}`);
-            userSessions.delete(chatId); // 清除会话数据
-            break;
+        bot.sendMessage(msg.chat.id, helpText);
     }
 });
 
-// 处理 /menu 命令
-// 处理 /menu 命令，显示操作菜单
-bot.onText(/\/menu/, (msg: { chat: { id: number } }) => {
-    const chatId = msg.chat.id;
-
-    bot.sendMessage(chatId, '请选择一个操作：', {
-        reply_markup: {
-            inline_keyboard: [
-                [
-                    { text: '获取时间', callback_data: 'GET_TIME' },
-                    { text: '获取用户信息', callback_data: 'GET_USER' }
+// 注册菜单命令路由，提供交互式按钮界面
+router.registerRoute('menu', {
+    start: (msg: Message) => {
+        bot.sendMessage(msg.chat.id, '请选择一个操作：', {
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        { text: '获取时间', callback_data: 'GET_TIME' },
+                        { text: '获取用户信息', callback_data: 'GET_USER' }
+                    ]
                 ]
-            ]
-        }
-    });
+            }
+        });
+    }
 });
 
 // 处理按钮点击事件
-bot.on('callback_query', (query: any) => {
-
+bot.on('callback_query', (query: CallbackQuery) => {
     const chatId = query.message?.chat.id;
     const data = query.data;
-    // 输出回调查询的详细信息
-    console.log('收到回调查询:', query);
     if (!chatId) return;
 
     if (data === 'GET_TIME') {
@@ -225,28 +183,33 @@ bot.on('callback_query', (query: any) => {
         bot.sendMessage(chatId, `你的用户名是 @${user.username || '未知'}，ChatID 是 ${user.id}`);
     }
 
-    // 通知 Telegram 按钮已被点击
     bot.answerCallbackQuery(query.id);
 });
 
-// 处理接收到的消息，实现简单的消息回显功能
-bot.on('message', (msg: { chat: { id: number }, text: string }) => {
-    bot.sendMessage(msg.chat.id, `你说了：${msg.text}`);
+// 使用路由处理所有消息
+// 修改消息处理逻辑，删除重复的消息处理器，只保留这一个
+bot.on('message', (msg: Message) => {
+    if (!msg.text) return;
+    
+    if (msg.text.startsWith('/')) {
+        // 处理命令消息
+        router.handleMessage(bot, {
+            ...msg,
+            message_id: 0,
+            date: Math.floor(Date.now() / 1000),
+            chat: {
+                id: msg.chat.id,
+                type: 'private',
+                first_name: '',
+                username: ''
+            }
+        });
+    } else {
+        // 处理非命令消息
+        const handled = router.handleStep(bot, msg);
+        if (!handled) {
+            // 如果路由系统没有处理这条消息，则执行默认的回显
+            bot.sendMessage(msg.chat.id, `你说了：${msg.text}`);
+        }
+    }
 });
-
-
-import Router from '../handlers/Router';
-import { setupRoutes } from '../handlers/routes';
-
-// 创建路由实例
-const router = new Router();
-
-// 设置路由
-setupRoutes(bot, router);
-
-// 注册消息处理器
-// 在文件顶部添加类型导入
-import { Message } from 'node-telegram-bot-api';
-
-// 修改消息处理器的类型
-bot.on('message', (msg: Message) => router.handleMessage(bot, msg));
