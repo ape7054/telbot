@@ -74,7 +74,9 @@ export default class Router {
     public handleMessage(bot: TelegramBot, msg: Message) {
         if (!msg.text?.startsWith('/')) return false;
 
+        // 从消息文本中提取命令名称(去掉开头的'/'并获取第一个空格前的内容)
         const command = msg.text.substring(1).split(' ')[0];
+        // 根据命令名称获取对应的路由处理器
         const route = this.routes.get(command);
 
         if (!route) return false;

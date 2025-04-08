@@ -139,14 +139,14 @@ router.registerRoute('start', {
 router.registerRoute('help', {
     start: (msg: Message) => {
         const helpText = `
-可用命令:
-/start - 启动机器人，发送欢迎消息
-/help - 显示帮助信息
-/menu - 显示操作菜单
-/info - 开始收集用户信息
+                            可用命令:
+                            /start - 启动机器人，发送欢迎消息
+                            /help - 显示帮助信息
+                            /menu - 显示操作菜单
+                            /info - 开始收集用户信息
 
-你还可以直接发送任意文字，我会回显给你 😄
-`;
+                            你还可以直接发送任意文字，我会回显给你 😄
+                            `;
         bot.sendMessage(msg.chat.id, helpText);
     }
 });
