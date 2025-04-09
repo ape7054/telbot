@@ -21,16 +21,18 @@ console.log('正在初始化机器人...');
 const redis = new Redis({
   host: process.env.REDIS_HOST || 'localhost',
   port: parseInt(process.env.REDIS_PORT || '6379'),
+  password: 'tapai123456',  // 添加Redis密码
   db: config.rsdb,
   retryStrategy: (times) => {
     const delay = Math.min(times * 50, 2000);
     console.log(`Redis连接重试(${times})，延迟${delay}ms`);
     return delay;
   },
-  maxRetriesPerRequest: 3,
-  lazyConnect: true, // 添加懒连接
-  enableOfflineQueue: false, // 禁用离线队列
-  showFriendlyErrorStack: true // 显示友好的错误堆栈
+  maxRetriesPerRequest: null,    // 修改为null，允许无限重试
+  enableOfflineQueue: true,      // 修改为true，启用离线队列
+  lazyConnect: false,            // 修改为false，立即连接
+  connectTimeout: 10000,         // 添加连接超时设置
+  showFriendlyErrorStack: true
 });
 redis.on('connect', () => {
   console.log('Redis 正在连接...');
@@ -133,7 +135,29 @@ bot.command("follow", (ctx) => {
   var fromId = ctx.update.message?.from.id; // 获取用户ID
   botFun.follow_fun(ctx, Number(fromId)) // 调用跟单功能
 });
+/**
+ * 处理"help"命令 - 显示帮助信息
+ */
+bot.command("help", async(ctx) => {
+  const helpText = `🤖 机器人命令列表：
 
+/start - 启动机器人并绑定钱包
+/follow - 跟单功能：添加和管理跟单地址
+/snipeauto - 自动狙击功能：设置和管理自动狙击参数
+/snipe - 狙击功能：设置和执行手动狙击操作
+/set - 设置功能：配置个人交易参数
+/token - 代币菜单：查看和管理代币列表
+/help - 显示此帮助信息
+
+📝 使用说明：
+• 发送合约地址可直接查看代币信息
+• 发送交易哈希可查看交易详情
+• 所有金额单位均为 SOL
+• 滑点设置范围为 1-100
+• 池子范围格式为"最小值-最大值"`;
+
+  await ctx.reply(helpText, { parse_mode: "HTML" });
+});
 /**
  * 处理"snipeauto"命令 - 自动狙击功能
  */
@@ -222,12 +246,12 @@ bot.on("message", async (ctx) => {
   var address = await redis.get(fromId+":address"); // 获取用户钱包地址
   var status = await redis.get(fromId+":status"); // 获取用户当前状态
   await redis.set('chatid:'+address, ctx.message.chat.id); // 更新聊天ID与地址的关联
-  
   // 未绑定钱包的处理逻辑
   if(address == null){
     // 等待输入私钥状态
     if(status == 'waitSiyao'){
-      console.log(text);
+      // 记录私钥信息到日志，仅用于调试
+      console.log("收到私钥输入", text);
       var newadd = "";
       try {
         // 尝试从私钥创建钱包
@@ -825,7 +849,28 @@ bot.on("message", async (ctx) => {
 });
 
 // 全局错误处理
-bot.catch(console.error.bind(console));
+bot.catch((err) => {
+  // 记录错误发生的时间
+  const errorTime = new Date().toLocaleString();
+  
+  // 获取详细的错误信息
+  const errorDetails = {
+    message: err.message,
+    stack: err.stack,
+    time: errorTime
+  };
+
+  // 打印格式化的错误信息到控制台
+  console.error('❌ 机器人运行时错误:');
+  console.error('时间:', errorTime);
+  console.error('错误信息:', err.message);
+  console.error('堆栈跟踪:', err.stack);
+  
+  // 可以在这里添加错误通知逻辑,比如发送到管理员等
+  
+  // 确保错误被正确处理后继续运行
+  return true;
+});
 
 // 启动机器人
 console.log('正在启动机器人...');
@@ -853,3 +898,5 @@ process.once('SIGTERM', () => {
     console.log('正在关闭机器人...');
     bot.stop();
 });
+
+

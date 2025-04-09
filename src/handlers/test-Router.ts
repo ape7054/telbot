@@ -72,15 +72,28 @@ export default class Router {
     // 处理消息
     // 修改 handleMessage 方法的类型
     public handleMessage(bot: TelegramBot, msg: Message) {
-        if (!msg.text?.startsWith('/')) return false;
+        // 调试输出：接收到的消息内容
+        console.log('收到消息:', msg.text);
+        // 调试输出：打印bot对象信息
+        console.log('Telegram Bot实例:', bot);
+        if (!msg.text?.startsWith('/')) {
+            console.log('消息不是命令格式，忽略处理');
+            return false;
+        }
 
         // 从消息文本中提取命令名称(去掉开头的'/'并获取第一个空格前的内容)
         const command = msg.text.substring(1).split(' ')[0];
+        console.log('提取的命令:', command);
+
         // 根据命令名称获取对应的路由处理器
         const route = this.routes.get(command);
+        
+        if (!route) {
+            console.log('未找到对应的路由处理器:', command);
+            return false;
+        }
 
-        if (!route) return false;
-
+        console.log('找到路由处理器，初始化会话数据');
         // 初始化会话数据
         this.sessions.set(msg.chat.id, {
             currentRoute: command,
@@ -88,9 +101,12 @@ export default class Router {
             data: {}
         });
 
-        route.start(msg, {});
+        // 调用路由的起始处理函数，传入消息对象和会话数据
+        console.log('开始执行路由处理函数，chatId:', msg.chat.id);
+        route.start(msg, this.sessions.get(msg.chat.id)?.data || {});
         return true;
     }
+
 
     // 添加处理会话步骤的方法
     public handleStep(bot: TelegramBot, msg: Message): boolean {
