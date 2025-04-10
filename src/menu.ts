@@ -10,12 +10,38 @@ import { config } from './init';
 
 // 初始化 Redis 连接
 const redis = new Redis({
-  host: process.env.REDIS_HOST || config.rshost,
-  port: parseInt(process.env.REDIS_PORT || '6379'),
-  password: process.env.REDIS_PASSWORD || config.rspwd,
+  host: process.env.REDIS_HOST || 'localhost',
+  port: parseInt('6379'),
+  password: 'tapai123456',  // 添加Redis密码
   db: config.rsdb,
+  retryStrategy: (times) => {
+    const delay = Math.min(times * 50, 2000);
+    console.log(`Redis连接重试(${times})，延迟${delay}ms`);
+    return delay;
+  },
+  maxRetriesPerRequest: null,    // 修改为null，允许无限重试
+  enableOfflineQueue: true,      // 修改为true，启用离线队列
+  lazyConnect: false,            // 修改为false，立即连接
+  connectTimeout: 10000,         // 添加连接超时设置
+  showFriendlyErrorStack: true
 });
 
+// 添加Redis连接事件监听
+redis.on('connect', () => {
+  console.log('Menu Redis 正在连接...');
+});
+
+redis.on('ready', () => {
+  console.log('✅ Menu Redis连接成功，已就绪');
+});
+
+redis.on('error', (err) => {
+  console.error('❌ Menu Redis连接错误：', err);
+});
+
+redis.on('close', () => {
+  console.warn('⚠️ Menu Redis连接已关闭');
+});
 /**
  * 资产菜单 - 显示用户持有的代币列表
  * 支持查看代币详情和快速清仓操作
@@ -508,11 +534,17 @@ const flowMenu = new Menu('flow-menu')
  */
 const noUserMenu = new Menu('no-user-menu').text('绑定钱包', async ctx => {
   var fromId = ctx.update.callback_query.from.id;
-  await redis.del(fromId + ':address');
-  await redis.set(fromId + ':status', 'waitSiyao');
-  ctx.reply('请输入你的钱包私钥:\n ⚠️ 请勿对外泄露私钥');
+  
+  try {
+    await redis.del(fromId + ':address');
+    await redis.set(fromId + ':status', 'waitSiyao');
+    ctx.reply('请输入你的钱包私钥:\n ⚠️ 请勿对外泄露私钥');
+  } catch (error) {
+    console.error('Redis操作失败:', error);
+    console.error('错误详情:', (error as Error).stack);
+  }
 });
-
+ 
 /**
  * 主菜单 - 机器人的主界面，提供各功能入口
  */

