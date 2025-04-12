@@ -56,6 +56,13 @@ interface BotInfo {
     supports_inline_queries?: boolean;
 }
 
+// 导入会话处理器
+import { loadSessions } from '../handlers/test-session';
+
+// 在创建 bot 实例之前加载会话
+console.log('正在加载会话数据...');
+loadSessions();
+
 // 添加启动确认，验证机器人连接状态
 bot.getMe().then((botInfo: TelegramBot.User) => {
     console.log('✅ 机器人连接成功！');
