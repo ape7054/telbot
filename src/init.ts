@@ -138,20 +138,17 @@ export class request {
   async fetch(method: string, params: any, type: string) {
     // 获取当前时间戳
     const time = Math.floor(new Date().getTime() / 1000);
-
-    // 默认使用配置的RPC URL
     let url = config.RPC_URL;
 
-    // 根据不同类型设置不同的URL
     switch (type) {
       case 'Blockhash':
-        url = 'http://127.0.0.1:8899';
+        url = 'https://solana-yellowstone-grpc.publicnode.com:443';  // 修改为 https
         break;
       case 'frankfurt':
-        url = 'http://157.90.64.187:8899';
+        url = 'https://solana-yellowstone-grpc.publicnode.com:443';  // 修改为 https
         break;
       case 'amsterdam':
-        url = 'http://46.17.101.7:8899';
+        url = 'https://solana-yellowstone-grpc.publicnode.com:443';  // 修改为 https
         break;
       case 'Blockhash':
         url = config.RPC_URL;
@@ -180,7 +177,10 @@ export class request {
     const client = axios.create({
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0',  // 添加 User-Agent
       },
+      timeout: 30000,  // 添加超时设置
     });
 
     try {
@@ -365,11 +365,13 @@ export const config = {
   maxLamports: 1000000, // Max lamports allowed for fees
   direction: 'in' as 'in' | 'out', // Swap direction: 'in' or 'out'
   maxRetries: 10,
-  RPC_URL: 'http://192.69.194.50:10001',
-  WSS_URL: 'wss://192.69.194.50:10001',
-  BIG_URL: 'http://127.0.0.1:8899',
-  grpc_url: process.env.GRPC_URL || 'https://solana-yellowstone-grpc.publicnode.com:443',
-  atlas_wss: 'wss://192.69.194.50:10001',
+  
+  RPC_URL: 'https://rpc.helius.xyz/?api-key=58cb60c2-fcc6-4c96-9910-7123cf351f7a',  // 使用 Helius API key
+  
+  WSS_URL: 'wss://mainnet.helius-rpc.com/?api-key=58cb60c2-fcc6-4c96-9910-7123cf351f7a',  // 使用相同的 API key
+  BIG_URL: 'http://solana-yellowstone-grpc.publicnode.com:443',
+  grpc_url: 'https://solana-yellowstone-grpc.publicnode.com:443',
+  atlas_wss: 'wss://solana-yellowstone-grpc.publicnode.com:443',
   solprice: 251,
   // 更新Redis配置以匹配docker-compose.yml
   host: 'localhost',
