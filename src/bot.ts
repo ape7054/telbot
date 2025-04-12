@@ -221,7 +221,6 @@ bot.command("start", async(ctx) => {
       } else {
         console.log('在列表');
       }
-      
       // 显示钱包信息和主菜单
       await ctx.reply("钱包地址："+address+"\n钱包余额: "+solNumber+"SOL\n"+"✔️发送合约地址即可开始交易", { reply_markup: menu });
     } catch {

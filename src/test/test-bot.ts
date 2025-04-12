@@ -1,5 +1,5 @@
 import Router from '../handlers/test-Router';
-import { setupRoutes } from '../handlers/routes';
+
 require('dotenv').config();
 
 // 导入Telegram机器人API和代理模块
@@ -84,8 +84,9 @@ bot.on('error', (error: Error) => {
 // 创建路由实例
 const router = new Router();
 
-// 注册信息收集路由
-router.registerRoute('info', {
+  // 只传入 bot 实例
+
+router.registerRoute('info', {// 注册自定义路由
     start: (msg, data) => {
         const session = router.getSession(msg.chat.id);
         if (session) {
@@ -191,8 +192,8 @@ bot.on('callback_query', (query: CallbackQuery) => {
 bot.on('message', (msg: Message) => {
     if (!msg.text) return;
     
-    if (msg.text.startsWith('/')) {
-        // 处理命令消息
+    if (msg.text.startsWith('/')) { // 处理命令消息
+       
         router.handleMessage(bot, {
             ...msg,
             message_id: 0,

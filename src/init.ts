@@ -141,9 +141,7 @@ export class request {
     let url = config.RPC_URL;
 
     switch (type) {
-      case 'Blockhash':
-        url = 'https://solana-yellowstone-grpc.publicnode.com:443';  // 修改为 https
-        break;
+    
       case 'frankfurt':
         url = 'https://solana-yellowstone-grpc.publicnode.com:443';  // 修改为 https
         break;
