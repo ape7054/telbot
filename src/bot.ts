@@ -34,22 +34,25 @@ const redis = new Redis({
   connectTimeout: 10000,         // 添加连接超时设置
   showFriendlyErrorStack: true
 });
+// 监听Redis连接事件
 redis.on('connect', () => {
   console.log('Redis 正在连接...');
 });
 
+// 监听Redis就绪事件
 redis.on('ready', () => {
   console.log('✅ Redis连接成功，已就绪');
 });
 
+// 监听Redis错误事件
 redis.on('error', (err) => {
   console.error('❌ Redis连接错误：', err);
 });
 
+// 监听Redis关闭事件
 redis.on('close', () => {
   console.warn('⚠️ Redis连接已关闭');
 });
-
 
 // 初始化各种服务和工具
 const client = new request; // 创建请求客户端实例
