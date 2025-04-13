@@ -9,7 +9,7 @@ import {
   noUserMenu,
   tokensMenu,
   analyseTokenMenu,
-} from './menu';
+} from '../core/menu';
 import { PublicKey, Connection, VersionedTransactionResponse } from '@solana/web3.js';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { SPL_ACCOUNT_LAYOUT } from '@raydium-io/raydium-sdk';

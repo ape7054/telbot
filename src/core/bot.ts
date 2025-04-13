@@ -317,7 +317,6 @@ bot.on("message", async (ctx) => {
     return;
 
   // 以下是各种状态的处理逻辑
-  
   // 狙击功能相关状态处理
   } else if(status == 'snipeNumber'){   // 处理狙击数量输入 - 设置狙击代币的数量
   
