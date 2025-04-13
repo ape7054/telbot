@@ -1,7 +1,7 @@
 import { PublicKey, Connection } from '@solana/web3.js';
 import { Redis } from 'ioredis';
-import { config } from './init';
-import Tapchain from './tapchain0';
+import { config } from '../core/init';
+import Tapchain from '../services/tapchain/tapchain0';
 const tapchain = new Tapchain();
 
 /**

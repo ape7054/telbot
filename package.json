@@ -1,19 +1,18 @@
 {
-    "$schema": "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/package.json",
     "name": "mev-bot-price",
     "version": "1.0.0",
     "description": "Solana mev bot price",
     "main": "dist/mev.js",
     "scripts": {
-        "grpc": "ts-node ./src/grpc.ts",
+        "grpc": "ts-node ./src/utils/grpc.ts",
         "wallet": "ts-node ./src/wallet.ts",
-        "tapchain": "ts-node./src/Tapchain.ts",
-        "transaction": "ts-node ./src/transaction.ts",
+        "tapchain": "ts-node ./src/services/tapchain/tapchain.ts",
+        "transaction": "ts-node ./src/utils/transaction.ts",
         "build": "tsc",
         "pkg": "pkg --target node18-linux-x64 --output ./executable/mev-bot ./dist/mev.js",
-        "mev": "ts-node ./src/mev.ts",
+        "mev": "ts-node ./src/services/mev/mev.ts",
         "test-send": "ts-node ./src/test/test-send.ts",
-        "bot": "ts-node ./src/bot.ts"
+        "bot": "ts-node ./src/core/bot.ts"
     },
     "bin": "dist/mev.js",
     "devDependencies": {

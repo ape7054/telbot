@@ -1,7 +1,7 @@
 import { Context } from 'grammy';
 import { Redis } from 'ioredis';
 import { StateHandler } from './StateHandler';
-import BotFun from '../fun';
+import BotFun from '../core/fun';
 
 export class MessageHandler {
  constructor(

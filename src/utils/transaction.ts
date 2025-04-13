@@ -1,7 +1,7 @@
 // 导入所需的依赖
 import fs from 'fs';
 import Decimal from 'decimal.js';
-import { JupSwaps, RouterInfo, CONFIG, Programs, JupiterProgram, Token2022Program } from './config';
+import { JupSwaps, RouterInfo, CONFIG, Programs, JupiterProgram, Token2022Program } from '../core/config';
 import {
   transferInstructionData,
   transferCheckedInstructionData,

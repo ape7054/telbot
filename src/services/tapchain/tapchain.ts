@@ -1,8 +1,8 @@
 import { Callback, Redis } from 'ioredis';
 import { Bot } from 'grammy';
-import PumpSwap from './pumpSwap';
-import RaydiumSwap from './raydiumSwap';
-import { config, request } from './init';
+import PumpSwap from '../swap/pumpSwap';
+import RaydiumSwap from '../swap/raydiumSwap';
+import { config, request } from '../../core/init';
 import { VersionedTransactionResponse } from '@solana/web3.js';
 const Decimal = require('decimal.js');
 const pump = new PumpSwap();
