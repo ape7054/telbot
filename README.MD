@@ -15,7 +15,18 @@
 ## 项目结构
 C:\USERS\14690\DESKTOP\TELBOT\SRC
 ├─backup                  # 备份目录，存放备份文件
-│   
+│      bot.ts            
+│      config.ts         
+│      fun.ts            
+│      grpc.ts          
+│      init.ts           
+│      menu.ts           
+│      mev.ts            
+│      pumpSwap.ts      
+│      raydiumSwap.ts    
+│      tapchain.ts      
+│      tapchain0.ts     
+│      transaction.ts   
 │      
 ├─core                   # 核心功能目录
 │      bot.ts            # Telegram机器人主逻辑

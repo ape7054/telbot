@@ -55,7 +55,7 @@ redis.on('close', () => {
 });
 
 // 初始化各种服务和工具
-const client = new request; // 创建请求客户端实例
+const client = new request(); // 创建请求客户端实例
 const botFun = new BotFun(); // 创建机器人功能实例
 const tapchain = new Tapchain(); // 创建Tapchain实例
 const Decimal = require('decimal.js'); // 引入Decimal.js库，用于高精度数值计算
@@ -85,9 +85,21 @@ const bot = new Bot(token, {
 });
 
 // 导入菜单组件
-const { menu, followMenu, flowMenu, tokenMenu, noUserMenu, snipeMenu, snipeAutoMenu, snipeDetailMenu, settingMenu, tokensMenu, analyseTokenMenu } = require('./menu');
+import { 
+  menu,          // 主菜单
+  followMenu,    // 跟单菜单
+  flowMenu,      // 流动性菜单
+  tokenMenu,     // 代币菜单
+  noUserMenu,    // 未注册用户菜单
+  snipeMenu,     // 狙击菜单
+  snipeAutoMenu, // 自动狙击菜单
+  snipeDetailMenu, // 狙击详情菜单
+  settingMenu,   // 设置菜单
+  tokensMenu,    // 代币列表菜单
+  analyseTokenMenu // 代币分析菜单
+} from './menu';
 
-// 默认银行信息配置
+// 默认庄家信息配置
 let bankinfo = {
   address: '', // 地址
   jitoFee: 0.0025, // Jito费用
@@ -212,6 +224,7 @@ bot.command("start", async(ctx) => {
     try {
       // 获取钱包余额
       var balance = await client.getBalance(new PublicKey(address));
+      // 将lamports余额转换为SOL,并保留4位小数
       var solNumber = Number((new Decimal(balance)).div(new Decimal('1000000000'))).toFixed(4);
       
       // 检查地址是否在会员列表中，如果不在则添加
