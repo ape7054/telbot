@@ -366,27 +366,48 @@ export default class BotFun {
     return ctx.reply('代币列表', { reply_markup: tokensMenu });
   }
 
+  /**
+   * 获取跟单钱包列表及状态
+   * @param ctx - Telegram上下文
+   * @param fromId - 用户ID
+   */
   async follow_fun(ctx: any, fromId: number) {
-    var address = (await redis.get(fromId + ':address')) || '';
-    if (address == '') return ctx.reply('未绑定钱包，快快点击绑定！', { reply_markup: noUserMenu });
-    var myKey = fromId + ':banker';
-    var followNum = await redis.llen(myKey);
-    var msg = '钱包：' + address + '\n\n跟单钱包数：' + followNum + '\n\n';
-    var nowBanker = await redis.lrange(myKey, 0, -1);
+    // 获取用户钱包地址
+    const address = (await redis.get(fromId + ':address')) || '';
+    // 输出用户钱包地址
+    if (address === '') {
+      return ctx.reply('未绑定钱包，快快点击绑定！', { reply_markup: noUserMenu });
+    }
+    // 获取跟单钱包列表
+    const myKey = fromId + ':banker';
+    const followNum = await redis.llen(myKey);
+    let msg = `钱包：${address}\n\n跟单钱包数：${followNum}\n\n`;
+
+    // 遍历获取所有跟单钱包信息
+    const nowBanker = await redis.lrange(myKey, 0, -1);
     for (let i = 0; i < nowBanker.length; i++) {
-      var ii = i + 1;
-      const b = nowBanker[i];
-      var addinfo = await redis.get('bank:' + address + ':' + b);
+      // 获取当前跟单钱包地址
+      const bankerAddress = nowBanker[i];
+      // 获取跟单钱包配置信息
+      const addinfo = await redis.get(`bank:${address}:${bankerAddress}`);
+      
       if (addinfo) {
-        var info = JSON.parse(addinfo);
-        var short = b.slice(0, 5);
-        msg = msg + '#' + ii + '\n钱包名称: ' + short;
-        var addmsg1 = info.status == 1 ? ' 🟢已开启' : ' 🔴已暂停';
-        var addmsg2 = info.autoSell == 1 ? '✅' : '❌';
-        msg = msg + addmsg1 + ' （买✅ 卖' + addmsg2 + '）';
-        msg = msg + '\n' + b + '\n';
+        // 解析钱包配置
+        const info = JSON.parse(addinfo);
+        // 获取钱包地址前5位作为简称
+        const shortAddress = bankerAddress.slice(0, 5);
+        
+        // 根据状态生成对应emoji
+        const statusEmoji = info.status == 1 ? ' 🟢已开启' : ' 🔴已暂停';
+        const autoSellEmoji = info.autoSell == 1 ? '✅' : '❌';
+        
+        // 拼接钱包信息到消息
+        msg += `#${i + 1}\n钱包名称: ${shortAddress}`;
+        msg += `${statusEmoji} （买✅ 卖${autoSellEmoji}）\n`; 
+        msg += `${bankerAddress}\n`;
       }
     }
+
     ctx.reply(msg, { reply_markup: followMenu });
   }
 

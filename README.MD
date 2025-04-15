@@ -14,7 +14,7 @@
 
 ## 项目结构
 C:\USERS\14690\DESKTOP\TELBOT\SRC
-├─backup                  # 备份目录，存放备份文件
+├─backup                  # 备份了一些老版本文件
 │      bot.ts            
 │      config.ts         
 │      fun.ts            
@@ -34,7 +34,7 @@ C:\USERS\14690\DESKTOP\TELBOT\SRC
 │      fun.ts           # 机器人功能实现
 │      index.ts         # 核心模块入口文件
 │      init.ts         # 初始化配置
-│      menu.ts         # 菜单组件实现
+│      menu.ts         # 电报菜单组件
 │      
 ├─handlers              # 处理器目录
 │      MessageHandler.ts # 消息处理器
@@ -59,4 +59,4 @@ C:\USERS\14690\DESKTOP\TELBOT\SRC
 ├─test                  # 测试目录
 └─utils                 # 工具类目录
         grpc.ts         # gRPC工具类
-        transaction.ts  # 交易工具类
+       

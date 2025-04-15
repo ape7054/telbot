@@ -117,16 +117,19 @@ async function updateListenersFromRedis() {
   }, 200);
 }
 
+// 订阅 Redis 频道，监听账户地址更新和哈希检查
 redis.subscribe('account_addresses_update', 'hashcheck', res => {
   console.log(res);
 });
 
 // 监听 Redis 键空间通知
 redis.on('message', async (channel: string, msg: any) => {
+  // 当接收到账户地址更新通知时，更新监听器
   if (channel === 'account_addresses_update') {
     console.log('Account addresses changed, updating listeners...');
     updateListenersFromRedis();
   }
+  // 当接收到哈希检查通知时，将消息添加到签名集合中
   if (channel === 'hashcheck') {
     signatures.add(msg);
   }

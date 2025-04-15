@@ -36,22 +36,22 @@ const redis = new Redis({
 });
 // 监听Redis连接事件
 redis.on('connect', () => {
-  console.log('Redis 正在连接...');
+  console.log('Bot Redis 正在连接...');
 });
 
 // 监听Redis就绪事件
 redis.on('ready', () => {
-  console.log('✅ Redis连接成功，已就绪');
+  console.log('✅Bot Redis连接成功，已就绪');
 });
 
 // 监听Redis错误事件
 redis.on('error', (err) => {
-  console.error('❌ Redis连接错误：', err);
+  console.error('❌Bot Redis连接错误：', err);
 });
 
 // 监听Redis关闭事件
 redis.on('close', () => {
-  console.warn('⚠️ Redis连接已关闭');
+  console.warn('⚠️Bot Redis连接已关闭');
 });
 
 // 初始化各种服务和工具
@@ -98,8 +98,7 @@ import {
   tokensMenu,    // 代币列表菜单
   analyseTokenMenu // 代币分析菜单
 } from './menu';
-
-// 默认庄家信息配置
+// 默认银行信息配置
 let bankinfo = {
   address: '', // 地址
   jitoFee: 0.0025, // Jito费用
@@ -912,16 +911,25 @@ bot.catch((err) => {
 });
 
 // 启动机器人
+// 在启动机器人之前添加
 console.log('正在启动机器人...');
 
-// 添加启动确认
-bot.api.getMe().then((botInfo) => {
-    console.log('✅ 机器人连接成功！');
-    console.log('机器人信息:', botInfo);
+// 添加删除Webhook的代码
+bot.api.deleteWebhook().then(() => {
+    console.log('✅ Webhook已删除');
     
-    // 启动机器人
-    return Promise.resolve(run(bot)).then(() => {
-        console.log('✅ 机器人启动成功!');
+   // 添加启动确认
+    bot.api.getMe().then((botInfo) => {
+        console.log('✅ 机器人连接成功！');
+        console.log('机器人信息:', botInfo);
+        
+        // 启动机器人
+        return Promise.resolve(run(bot)).then(() => {
+            console.log('✅ 机器人启动成功!');
+        });
+    }).catch((error) => {
+        console.error('❌ Webhook删除失败:', error);
+        process.exit(1);
     });
 }).catch((error) => {
     console.error('❌ 机器人连接失败:', error);
