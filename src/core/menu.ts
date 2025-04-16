@@ -981,11 +981,14 @@ const followMenu = new Menu('follow-menu')
     ctx.reply('✔️请输入您要跟单的地址');
   })
   .row()
+// 动态生成跟单菜单项
   .dynamic(async ctx => {
+    // 初始化工具类和基础变量
     const botFun = new BotFun();
     var fromId = ctx.update.message?.from.id || ctx.update.callback_query?.from.id;
     var myaddress = await redis.get(fromId + ':address');
     var myKey = fromId + ':banker';
+    
     // 获取用户的所有跟单目标
     var nowBanker = await redis.lrange(myKey, 0, -1);
     const range = new MenuRange();
@@ -994,22 +997,25 @@ const followMenu = new Menu('follow-menu')
     // 为每个跟单目标创建菜单项
     for (let index = 0; index < nowBanker.length; index++) {
       const b = nowBanker[index];
-      var short = b.slice(0, 5);
+      var short = b.slice(0, 5); // 截取地址前5位作为简短显示
       var addinfo = await redis.get('bank:' + myaddress + ':' + b);
       var bank = JSON.parse(addinfo);
 
+      // 检查是否有任何跟单处于开启状态
       if (bank.status == 1 && allstatus == 0) {
         allstatus = 1;
       }
+
+      // 构建跟单目标的菜单项
       range
         .text(bank.name || short, ctx => {
-          botFun.detail_fun(fromId, b, ctx);
+          botFun.detail_fun(fromId, b, ctx); // 显示详情
         })
         .text('编辑', ctx => {
-          botFun.detail_fun(fromId, b, ctx);
+          botFun.detail_fun(fromId, b, ctx); // 编辑配置
         })
         .text('删除', async ctx => {
-          botFun.delBank(fromId, b, ctx);
+          botFun.delBank(fromId, b, ctx); // 删除跟单
         })
         .row();
     }
@@ -1019,21 +1025,16 @@ const followMenu = new Menu('follow-menu')
       .text(
         () => (allstatus == 0 ? '🟢一键开启' : '🔴一键关闭'),
         async ctx => {
-          if (allstatus == 0) {
-            nowBanker.forEach(async (b: string, i: Number) => {
-              var addinfo = await redis.get('bank:' + myaddress + ':' + b);
-              var bank = JSON.parse(addinfo);
-              bank.status = 1;
-              await redis.set('bank:' + myaddress + ':' + b, JSON.stringify(bank));
-            });
-          } else {
-            nowBanker.forEach(async (b: string, i: Number) => {
-              var addinfo = await redis.get('bank:' + myaddress + ':' + b);
-              var bank = JSON.parse(addinfo);
-              bank.status = 0;
-              await redis.set('bank:' + myaddress + ':' + b, JSON.stringify(bank));
-            });
+          const newStatus = allstatus == 0 ? 1 : 0; // 确定新状态
+          
+          // 更新所有跟单状态
+          for(const b of nowBanker) {
+            var addinfo = await redis.get('bank:' + myaddress + ':' + b);
+            var bank = JSON.parse(addinfo);
+            bank.status = newStatus;
+            await redis.set('bank:' + myaddress + ':' + b, JSON.stringify(bank));
           }
+          
           ctx.deleteMessage();
           botFun.follow_fun(ctx, Number(fromId));
         }
@@ -1041,7 +1042,6 @@ const followMenu = new Menu('follow-menu')
       .row();
     return range;
   });
-
 /**
  * 代币分析菜单 - 显示特定代币的持有者分析
  * 按持有量排序展示

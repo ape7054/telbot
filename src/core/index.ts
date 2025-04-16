@@ -119,7 +119,8 @@ async function updateListenersFromRedis() {
 
 // 订阅 Redis 频道，监听账户地址更新和哈希检查
 redis.subscribe('account_addresses_update', 'hashcheck', res => {
-  console.log(res);
+// 打印Redis订阅回调结果
+console.log('Redis subscription callback:', res);
 });
 
 // 监听 Redis 键空间通知
