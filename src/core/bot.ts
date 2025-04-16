@@ -555,8 +555,6 @@ bot.on("message", async (ctx) => {
       // 在 redis.set 之前添加
       
       
-      
-      
       await redis.set(addKey, JSON.stringify(follower));
       // 将用户地址添加到该跟单地址的跟单者列表中
       await redis.rpush(flKey, address || '');
