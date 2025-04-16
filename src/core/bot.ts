@@ -257,15 +257,15 @@ bot.command("snipe", async(ctx) => {
 bot.on("message", async (ctx) => {
   var fromId = ctx.message.from.id; // 获取用户ID
   var text: string = ctx.message.text || ""; // 获取消息文本
-  
+  var address = await redis.get(fromId+":address"); // 获取用户钱包地址
+  var status = await redis.get(fromId+":status"); // 获取用户当前状态
+
+
   // 添加调试输出
   console.log('收到消息:', {
     fromId: fromId,
     text: text,
   });
-  
-  var address = await redis.get(fromId+":address"); // 获取用户钱包地址
-  var status = await redis.get(fromId+":status"); // 获取用户当前状态
   
   // 添加状态检查调试输出
   console.log('用户状态检查:', {
@@ -551,12 +551,25 @@ bot.on("message", async (ctx) => {
         jitoOpen:true // Jito开关
       };
       // 保存跟单配置
-      redis.set(addKey, JSON.stringify(follower));
-      redis.rpush(flKey, address || '');
-      redis.rpush(dbKey, text);
-      redis.rpush(myKey, text);
+      // 保存跟单配置信息
+      // 在 redis.set 之前添加
+      
+      
+      
+      
+      await redis.set(addKey, JSON.stringify(follower));
+      // 将用户地址添加到该跟单地址的跟单者列表中
+      await redis.rpush(flKey, address || '');
+      // 将跟单地址添加到全局账户地址列表
+      await redis.rpush(dbKey, text);
+      // 将跟单地址添加到用户的跟单列表
+      await redis.rpush(myKey, text);
+      // 设置当前编辑的跟单地址
       await redis.set(fromId+":editadd", text);
-      botFun.detail_fun(fromId, text, ctx);
+      // 显示跟单详情页面
+      // waitFollow 状态中，在保存配置前：
+      console.log('保存跟单配置:\n');
+      await botFun.detail_fun(fromId, text, ctx);
     }
     return;
     

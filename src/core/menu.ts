@@ -203,7 +203,8 @@ const flowMenu = new Menu('flow-menu')
     var addKey = 'bank:' + myaddress + ':' + address;
     // 从Redis获取该跟单的详细配置
     var addinfo = (await redis.get(addKey)) || '';
-    console.log(address, addinfo);
+    // 打印当前操作的地址和配置信息，用于调试
+    console.log('当前操作地址:', address, '配置信息:', addinfo);
 
     // 如果Redis中没有配置，则使用默认配置
     if (addinfo == '') {

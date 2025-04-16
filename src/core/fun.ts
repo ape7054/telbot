@@ -415,33 +415,61 @@ export default class BotFun {
     return (await redis.get(key)) || '';
   }
 
-  async detail_fun(fromId: number, b: string, ctx: any) {
-    var msg = '钱包地址：\n' + b + '\n\n';
+/**
+ * 获取跟单钱包详情
+ * @param fromId - 用户ID
+ * @param text - 钱包地址
+ * @param ctx - Telegram上下文
+ */
+async detail_fun(fromId: number, text: string, ctx: any) {
+    // 构建基础消息
+    var msg = '钱包地址：\n' + text + '\n\n';
+
+    // 获取用户钱包地址
     var myaddress = await redis.get(fromId + ':address');
-    var addKey = 'bank:' + myaddress + ':' + b;
-    await redis.set(fromId + ':menuBank', b);
+    
+    // 构建Redis键值
+    var addKey = 'bank:' + myaddress + ':' + text;
+    
+    // 保存当前菜单银行信息
+    await redis.set(fromId + ':menuBank', text);
+
+    // 获取钱包配置信息
     var addinfo = await redis.get(addKey);
     if (addinfo) {
       var info = JSON.parse(addinfo);
       if (info) {
+        // 添加钱包基本信息
         msg += '钱包名称：' + info.name + '\n';
         msg += 'Raydium跟单金额：' + info.buyRay + ' sol\n';
         msg += 'Pump跟单金额：' + info.buyPump + ' sol\n';
+
+        // 添加Raydium池子范围信息
         if (info.rayPoolRange) {
           var [rayVmin, rayVmax] = info.rayPoolRange.split('-');
           msg += 'Raydium跟单池子范围：' + rayVmin + ' - ' + rayVmax + ' sol\n';
         }
+
+        // 添加Pump池子范围信息
         if (info.pumpPoolRange) {
           var [pumpVmin, pumpVmax] = info.pumpPoolRange.split('-');
           msg += 'Pump跟单池子范围：' + pumpVmin + ' - ' + pumpVmax + ' sol\n';
         }
       }
     }
-    msg =
-      msg +
-      '\n说明：\n- 发送 /follow 即可管理跟单钱包，新增功能止盈止损的分段设置功能、池子区间范围功能\n';
+
+    // 添加说明信息
+    msg += '\n说明：\n- 发送 /follow 即可管理跟单钱包，新增功能止盈止损的分段设置功能、池子区间范围功能\n';
+    
+    // 发送消息
     await ctx.reply(msg, { reply_markup: flowMenu });
-  }
+}
+  
+  /**
+   * 通过Moralis API获取代币信息
+   * @param token - 代币地址
+   * @returns 代币基本信息,包含名称、精度、符号、更新权限地址
+   */
   async tokeninfoByMoralis(token: string) {
     const client = axios.create({
       headers: {
