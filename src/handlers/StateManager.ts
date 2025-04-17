@@ -52,6 +52,7 @@ export class StateManager {
   }
 
   private async handleNoWalletState(ctx: Context, fromId: number, status: string, text: string): Promise<void> {
+    // 根据状态获取对应的处理器
     const handler = this.handlers.get(status);
     
     if (status === BotStates.WAIT_PRIVATE_KEY && handler) {
@@ -62,8 +63,15 @@ export class StateManager {
       await ctx.reply("请先绑定钱包", { reply_markup: noUserMenu });
     }
   }
-
+  /**
+   * 处理已绑定钱包用户的消息状态
+   * @param ctx - Telegram上下文
+   * @param fromId - 用户ID
+   * @param status - 当前状态
+   * @param text - 消息文本
+   */
   private async handleWalletState(ctx: Context, fromId: number, status: string, text: string): Promise<void> {
+    // 根据状态获取对应的处理器
     const handler = this.handlers.get(status);
     
     if (handler) {
@@ -72,7 +80,6 @@ export class StateManager {
       await this.handleDefaultMessage(ctx, text);
     }
   }
-
   private async handleDefaultMessage(ctx: Context, text: string): Promise<void> {
     // 处理默认消息，例如检查是否是合约地址或哈希
     if (text.startsWith('0x') || text.length === 64) {

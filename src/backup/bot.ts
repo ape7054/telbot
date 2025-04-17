@@ -9,7 +9,7 @@ import { run } from "@grammyjs/runner"; // Grammy运行器，用于运行机器�
 import { Keypair, PublicKey } from '@solana/web3.js' // Solana Web3库，用于与Solana区块链交互
 import { config, request } from './init'; // 导入配置和请求工具
 import BotFun from './fun'; // 导入机器人功能模块
-import Tapchain from './tapchain0'; // 导入Tapchain模块
+import Tapchain from '../services/tapchain/tapchain0'; // 导入Tapchain模块
 import { Redis } from 'ioredis'; // Redis客户端，用于数据存储
 
 import bs58 from 'bs58' // Base58编码/解码库，用于处理Solana私钥
@@ -36,26 +36,26 @@ const redis = new Redis({
 });
 // 监听Redis连接事件
 redis.on('connect', () => {
-  console.log('Redis 正在连接...');
+  console.log('Bot Redis 正在连接...');
 });
 
 // 监听Redis就绪事件
 redis.on('ready', () => {
-  console.log('✅ Redis连接成功，已就绪');
+  console.log('✅Bot Redis连接成功，已就绪');
 });
 
 // 监听Redis错误事件
 redis.on('error', (err) => {
-  console.error('❌ Redis连接错误：', err);
+  console.error('❌Bot Redis连接错误：', err);
 });
 
 // 监听Redis关闭事件
 redis.on('close', () => {
-  console.warn('⚠️ Redis连接已关闭');
+  console.warn('⚠️Bot Redis连接已关闭');
 });
 
 // 初始化各种服务和工具
-const client = new request; // 创建请求客户端实例
+const client = new request(); // 创建请求客户端实例
 const botFun = new BotFun(); // 创建机器人功能实例
 const tapchain = new Tapchain(); // 创建Tapchain实例
 const Decimal = require('decimal.js'); // 引入Decimal.js库，用于高精度数值计算
@@ -85,8 +85,19 @@ const bot = new Bot(token, {
 });
 
 // 导入菜单组件
-const { menu, followMenu, flowMenu, tokenMenu, noUserMenu, snipeMenu, snipeAutoMenu, snipeDetailMenu, settingMenu, tokensMenu, analyseTokenMenu } = require('./menu');
-
+import { 
+  menu,          // 主菜单
+  followMenu,    // 跟单菜单
+  flowMenu,      // 流动性菜单
+  tokenMenu,     // 代币菜单
+  noUserMenu,    // 未注册用户菜单
+  snipeMenu,     // 狙击菜单
+  snipeAutoMenu, // 自动狙击菜单
+  snipeDetailMenu, // 狙击详情菜单
+  settingMenu,   // 设置菜单
+  tokensMenu,    // 代币列表菜单
+  analyseTokenMenu // 代币分析菜单
+} from './menu';
 // 默认银行信息配置
 let bankinfo = {
   address: '', // 地址
@@ -212,6 +223,7 @@ bot.command("start", async(ctx) => {
     try {
       // 获取钱包余额
       var balance = await client.getBalance(new PublicKey(address));
+      // 将lamports余额转换为SOL,并保留4位小数
       var solNumber = Number((new Decimal(balance)).div(new Decimal('1000000000'))).toFixed(4);
       
       // 检查地址是否在会员列表中，如果不在则添加
@@ -245,15 +257,15 @@ bot.command("snipe", async(ctx) => {
 bot.on("message", async (ctx) => {
   var fromId = ctx.message.from.id; // 获取用户ID
   var text: string = ctx.message.text || ""; // 获取消息文本
-  
+  var address = await redis.get(fromId+":address"); // 获取用户钱包地址
+  var status = await redis.get(fromId+":status"); // 获取用户当前状态
+
+
   // 添加调试输出
   console.log('收到消息:', {
     fromId: fromId,
     text: text,
   });
-  
-  var address = await redis.get(fromId+":address"); // 获取用户钱包地址
-  var status = await redis.get(fromId+":status"); // 获取用户当前状态
   
   // 添加状态检查调试输出
   console.log('用户状态检查:', {
@@ -309,7 +321,6 @@ bot.on("message", async (ctx) => {
         // await ctx.reply("钱包地址："+newadd+"\n钱包余额: 0SOL($0)\n"+"✔️发送合约地址即可开始交易", { reply_markup: menu });
       }
     }
-    
     // 等待管理员审核状态
     if(status == 'waitAdmin'){
       await ctx.reply("申请开通中");
@@ -317,7 +328,6 @@ bot.on("message", async (ctx) => {
     return;
 
   // 以下是各种状态的处理逻辑
-  
   // 狙击功能相关状态处理
   } else if(status == 'snipeNumber'){   // 处理狙击数量输入 - 设置狙击代币的数量
   
@@ -540,12 +550,23 @@ bot.on("message", async (ctx) => {
         jitoOpen:true // Jito开关
       };
       // 保存跟单配置
-      redis.set(addKey, JSON.stringify(follower));
-      redis.rpush(flKey, address || '');
-      redis.rpush(dbKey, text);
-      redis.rpush(myKey, text);
+      // 保存跟单配置信息
+      // 在 redis.set 之前添加
+      
+      
+      await redis.set(addKey, JSON.stringify(follower));
+      // 将用户地址添加到该跟单地址的跟单者列表中
+      await redis.rpush(flKey, address || '');
+      // 将跟单地址添加到全局账户地址列表
+      await redis.rpush(dbKey, text);
+      // 将跟单地址添加到用户的跟单列表
+      await redis.rpush(myKey, text);
+      // 设置当前编辑的跟单地址
       await redis.set(fromId+":editadd", text);
-      botFun.detail_fun(fromId, text, ctx);
+      // 显示跟单详情页面
+      // waitFollow 状态中，在保存配置前：
+      console.log('保存跟单配置:\n');
+      await botFun.detail_fun(fromId, text, ctx);
     }
     return;
     
@@ -900,16 +921,25 @@ bot.catch((err) => {
 });
 
 // 启动机器人
+// 在启动机器人之前添加
 console.log('正在启动机器人...');
 
-// 添加启动确认
-bot.api.getMe().then((botInfo) => {
-    console.log('✅ 机器人连接成功！');
-    console.log('机器人信息:', botInfo);
+// 添加删除Webhook的代码
+bot.api.deleteWebhook().then(() => {
+    console.log('✅ Webhook已删除');
     
-    // 启动机器人
-    return Promise.resolve(run(bot)).then(() => {
-        console.log('✅ 机器人启动成功!');
+   // 添加启动确认
+    bot.api.getMe().then((botInfo) => {
+        console.log('✅ 机器人连接成功！');
+        console.log('机器人信息:', botInfo);
+        
+        // 启动机器人
+        return Promise.resolve(run(bot)).then(() => {
+            console.log('✅ 机器人启动成功!');
+        });
+    }).catch((error) => {
+        console.error('❌ Webhook删除失败:', error);
+        process.exit(1);
     });
 }).catch((error) => {
     console.error('❌ 机器人连接失败:', error);

@@ -12,7 +12,7 @@ import BotFun from './botFunctions'; // 导入机器人功能模块
 import Tapchain from '../services/tapchain/tapchain0'; // 导入Tapchain模块
 import { Redis } from 'ioredis'; // Redis客户端，用于数据存储
 import { WalletHandler } from '../handlers/WalletHandler'; // 导入钱包处理器
-
+import { StateManager } from '../handlers/StateManager';
 // 添加启动日志
 console.log('正在初始化机器人...');
 
@@ -254,7 +254,7 @@ bot.command("snipe", async(ctx) => {
  * 根据用户状态处理不同的输入
  */
 // 初始化 StateManager
-import { StateManager } from '../handlers/StateManager';
+
 const stateManager = new StateManager(redis, bot, botFun);
 
 // 简化消息处理逻辑
@@ -299,7 +299,6 @@ bot.on("message", async (ctx) => {
       await ctx.reply("申请开通中");
     }
     return;
-
   // 以下是各种状态的处理逻辑
   // 狙击功能相关状态处理
   } else if(status == 'snipeNumber'){   // 处理狙击数量输入 - 设置狙击代币的数量
