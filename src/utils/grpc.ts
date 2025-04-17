@@ -1,10 +1,10 @@
 // 导入必要的库和模块
 import Client from '@triton-one/yellowstone-grpc'; // 导入GRPC客户端，用于连接Solana区块链
 import { SubscribeRequest } from '@triton-one/yellowstone-grpc'; // 导入订阅请求类型
-import { config } from './init'; // 导入配置信息
+import { config } from '../core/init'; // 导入配置信息
 import { PublicKey } from '@solana/web3.js'; // 导入Solana公钥类
 import base58 from 'bs58'; // 导入base58编码工具，用于处理Solana地址和签名
-import Tapchain from './tapchain0'; // 导入自定义的Tapchain类，用于处理链上数据
+import Tapchain from '../services/tapchain/tapchain0'; // 导入自定义的Tapchain类，用于处理链上数据
 
 const Decimal = require('decimal.js'); // 导入Decimal.js库，用于高精度数值计算
 const tapchain = new Tapchain(); // 创建Tapchain实例

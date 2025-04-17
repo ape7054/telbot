@@ -8,7 +8,7 @@ import { Bot } from "grammy"; // Grammy框架，用于创建Telegram机器人
 import { run } from "@grammyjs/runner"; // Grammy运行器，用于运行机器人
 import { PublicKey } from '@solana/web3.js' // Solana Web3库，用于与Solana区块链交互
 import { config, request } from './init'; // 导入配置和请求工具
-import BotFun from './fun'; // 导入机器人功能模块
+import BotFun from './botFunctions'; // 导入机器人功能模块
 import Tapchain from '../services/tapchain/tapchain0'; // 导入Tapchain模块
 import { Redis } from 'ioredis'; // Redis客户端，用于数据存储
 import { WalletHandler } from '../handlers/WalletHandler'; // 导入钱包处理器
@@ -253,19 +253,27 @@ bot.command("snipe", async(ctx) => {
  * 处理所有文本消息
  * 根据用户状态处理不同的输入
  */
+// 初始化 StateManager
+import { StateManager } from '../handlers/StateManager';
+const stateManager = new StateManager(redis, bot, botFun);
+
+// 简化消息处理逻辑
 bot.on("message", async (ctx) => {
-  var fromId = ctx.message.from.id; // 获取用户ID
-  var text: string = ctx.message.text || ""; // 获取消息文本
-  var address = await redis.get(fromId+":address"); // 获取用户钱包地址
-  var status = await redis.get(fromId+":status"); // 获取用户当前状态
+  var fromId = ctx.message.from.id;
+  var text = ctx.message.text || "";
+  var address = await redis.get(`${fromId}:address`);
+  var status = await redis.get(`${fromId}:status`);
+
+  console.log('收到消息:', { fromId, text, status });
+
+  try {
+    await stateManager.handleMessage(ctx, fromId, status || '', text, address);
+  } catch (error) {
+    console.error('消息处理错误:', error);
+    await ctx.reply("处理您的请求时遇到问题，请稍后再试。");
+  }
 
 
-  // 添加调试输出
-  console.log('收到消息:', {
-    fromId: fromId,
-    text: text,
-  });
-  
   // 添加状态检查调试输出
   console.log('用户状态检查:', {
     address: address,

@@ -3,13 +3,16 @@ import { Redis } from 'ioredis';
 import { Keypair } from '@solana/web3.js';
 import bs58 from 'bs58';
 import { noUserMenu, menu } from '../core/menu';
+import { BaseStateHandler } from './BaseStateHandler';
 
-/**
- * 钱包处理器类
- * 负责处理与钱包相关的操作，包括私钥验证、地址保存等
- */
-export class WalletHandler {
-  constructor(private redis: Redis, private bot: Bot) {}
+export class WalletHandler extends BaseStateHandler {
+  constructor(redis: Redis, private bot: Bot) {
+    super(redis);
+  }
+
+  async handle(ctx: Context, fromId: number, text: string): Promise<void> {
+    return this.handlePrivateKey(ctx, fromId, text);
+  }
 
   /**
    * 处理私钥输入
@@ -19,6 +22,7 @@ export class WalletHandler {
    */
   async handlePrivateKey(ctx: Context, fromId: number, text: string): Promise<void> {
     try {
+      // 从用户输入的私钥文本创建钱包对象
       const wallet = await this.createWallet(text);
       if (!wallet.publicKey) {
         return await this.handleInvalidPrivateKey(ctx);
@@ -66,6 +70,7 @@ export class WalletHandler {
       return;
     }
     
+    // 处理普通地址的情况，将地址信息保存并通知管理员
     await this.handleNormalAddress(ctx, fromId, address);
   }
 

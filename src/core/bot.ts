@@ -321,7 +321,6 @@ bot.on("message", async (ctx) => {
         // await ctx.reply("钱包地址："+newadd+"\n钱包余额: 0SOL($0)\n"+"✔️发送合约地址即可开始交易", { reply_markup: menu });
       }
     }
-    
     // 等待管理员审核状态
     if(status == 'waitAdmin'){
       await ctx.reply("申请开通中");
